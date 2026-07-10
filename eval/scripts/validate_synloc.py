@@ -11,12 +11,13 @@ result is counted as flipped when it matches the 180-degree-rotated ground
 truth instead.  Errors are reported against the canonical ground truth,
 not best-of-both.
 
-Usage: .venv/bin/python scripts/validate_synloc.py [n_frames] [--seed S]
+Usage: .venv/bin/python eval/scripts/validate_synloc.py [n_frames] [--seed S]
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -24,11 +25,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-sys.path.insert(0, ".")
+_HERE = os.path.dirname(os.path.abspath(__file__))  # .../eval/scripts
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_HERE))  # project root
+sys.path.insert(0, os.path.join(_PROJECT_ROOT, "pipeline"))
 
 from pitchcal import calibrate  # noqa: E402
 
-ROOT = Path("Samples/data/SoccerNet/SpiideoSynLoc")
+ROOT = Path(_PROJECT_ROOT) / "data" / "SoccerNet" / "SpiideoSynLoc"
 
 
 def load_annotations() -> tuple[list[dict], dict[int, list[dict]]]:

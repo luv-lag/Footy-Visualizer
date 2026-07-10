@@ -9,12 +9,12 @@ be corrected back to the canonical ground truth; the mirror twins must be
 rejected as physically impossible.
 
 Pass 2 (real impact): run every saved PnLCalib homography from the 11-frame
-broadcast evaluation (eval_comparison/out/H_pnlcalib_*.npy, centre-origin
-convention per approach_4/calibration.py) through the same function, report
-per-frame outcomes, and render before/after top-down warps for any frame
-where the 180-degree correction fired.
+broadcast evaluation (eval/eval_comparison/out/H_pnlcalib_*.npy, centre-origin
+convention per pipeline/pnlcalib_wrapper/calibration.py) through the same
+function, report per-frame outcomes, and render before/after top-down warps
+for any frame where the 180-degree correction fired.
 
-Run:  .venv/bin/python eval_comparison/validate_orientation_check.py
+Run:  .venv/bin/python eval/eval_comparison/validate_orientation_check.py
 """
 
 from __future__ import annotations
@@ -26,9 +26,9 @@ import sys
 import cv2
 import numpy as np
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-sys.path.insert(0, ROOT)
+HERE = os.path.dirname(os.path.abspath(__file__))  # .../eval/eval_comparison
+ROOT = os.path.dirname(os.path.dirname(HERE))        # project root
+sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, HERE)
 
 from run_comparison import T_CENTER_TO_CORNER, topdown  # noqa: E402  (shared renderer)

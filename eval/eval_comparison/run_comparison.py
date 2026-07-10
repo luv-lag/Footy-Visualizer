@@ -1,15 +1,15 @@
 """Stage 2: run pitchcal on the same frames, then score + visualise BOTH.
 
 Run with the project venv:
-    .venv/bin/python eval_comparison/run_comparison.py
+    .venv/bin/python eval/eval_comparison/run_comparison.py
 
 Fairness notes
 --------------
 * Both systems' homographies are converted to one common frame (pitch
   corner-origin, 105 x 68 m, pitch -> image pixels) before anything is
   computed.  PnLCalib's H is centre-origin world -> image (documented in
-  approach_4/calibration.py), so it is right-composed with the translation
-  T: (x, y) -> (x - 52.5, y - 34).
+  pipeline/pnlcalib_wrapper/calibration.py), so it is right-composed with
+  the translation T: (x, y) -> (x - 52.5, y - 34).
 * Overlays and top-down warps for both systems are rendered by the SAME
   shared code in this script (not by either system's own renderer).
 * The quantitative scores (trimmed chamfer "fit", lower better, and
@@ -30,9 +30,9 @@ import sys
 import cv2
 import numpy as np
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-sys.path.insert(0, ROOT)
+HERE = os.path.dirname(os.path.abspath(__file__))  # .../eval/eval_comparison
+ROOT = os.path.dirname(os.path.dirname(HERE))        # project root
+sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 
 from pitchcal import calibrate  # noqa: E402
 from pitchcal.detect import detect_features  # noqa: E402
@@ -43,11 +43,11 @@ from pitchcal.solve import Scorer  # noqa: E402
 OUT = os.path.join(HERE, "out")
 
 def discover_frames() -> list[tuple[str, str]]:
-    """All top-level images in Samples/, with short stable slugs."""
+    """All top-level images in data/samples/, with short stable slugs."""
     import glob
     out = []
-    for p in sorted(glob.glob(os.path.join(ROOT, "Samples", "*.png"))
-                    + glob.glob(os.path.join(ROOT, "Samples", "*.jpg"))):
+    for p in sorted(glob.glob(os.path.join(ROOT, "data", "samples", "*.png"))
+                    + glob.glob(os.path.join(ROOT, "data", "samples", "*.jpg"))):
         base = os.path.basename(p)
         m = re.search(r"(\d{4}-\d{2}-\d{2}) (\d{2})-(\d{2})-(\d{2})", base)
         if m:

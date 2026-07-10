@@ -45,10 +45,16 @@ from datetime import datetime
 import cv2
 import numpy as np
 
+_HERE = os.path.dirname(os.path.abspath(__file__))  # .../eval
+_ROOT = os.path.dirname(_HERE)                        # project root
+_PIPELINE_DIR = os.path.join(_ROOT, "pipeline")
+if _PIPELINE_DIR not in sys.path:
+    sys.path.insert(0, _PIPELINE_DIR)
+
 from detection import Detection, filter_players, infer
 
 #: Output directory for all debug images.
-OUTPUT_DIR = "./debug_output"
+OUTPUT_DIR = os.path.join(_ROOT, ".cache", "debug_output")
 
 #: Fixed, visually distinct colors per class, in OpenCV's BGR order.
 #: Chosen to stay far from pitch green and from each other.
@@ -709,6 +715,11 @@ def debug_combined(
 if __name__ == "__main__":
     # Lazy import: keeps debug_tools.py usable without team_separation.py
     # installed/present for callers who only need class-based debugging.
+    # team_separation.py (v1) is archived -- see archive/team_id_v1/ and
+    # archive/README.md; production uses team_id_v2 instead.
+    _archive_dir = os.path.join(_ROOT, "archive", "team_id_v1")
+    if _archive_dir not in sys.path:
+        sys.path.insert(0, _archive_dir)
     from team_separation import assign_teams
 
     # Replace this placeholder with a real broadcast frame path, or pass one

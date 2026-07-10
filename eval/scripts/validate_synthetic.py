@@ -11,18 +11,21 @@ distortion), runs the full pipeline, and reports:
 * position error in metres over the visible frame area (median / p90),
 * honesty -- how often a *wrong* mapping was reported as OK vs flagged.
 
-Usage:  .venv/bin/python scripts/validate_synthetic.py [n_frames] [--distort]
+Usage:  .venv/bin/python eval/scripts/validate_synthetic.py [n_frames] [--distort]
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 
 import numpy as np
 
-sys.path.insert(0, ".")
+_HERE = os.path.dirname(os.path.abspath(__file__))  # .../eval/scripts
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_HERE))  # project root
+sys.path.insert(0, os.path.join(_PROJECT_ROOT, "pipeline"))
 
 from pitchcal import CalibrationStatus, calibrate  # noqa: E402
 from pitchcal.synthetic import SyntheticFrame, broadcast_camera_suite  # noqa: E402

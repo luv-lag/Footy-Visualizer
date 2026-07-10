@@ -1,12 +1,12 @@
-"""Stage 1: run PnLCalib (production approach_4 wrapper) on the 5 frames.
+"""Stage 1: run PnLCalib (production pnlcalib_wrapper) on the 5 frames.
 
 Run with the PnLCalib venv:
-    ai-workspace/PnLCalib/.venv/bin/python eval_comparison/run_pnlcalib.py
+    vendor/PnLCalib/.venv/bin/python eval/eval_comparison/run_pnlcalib.py
 
-Uses ONLY the documented approach_4 API (load_models / calibrate); no
+Uses ONLY the documented pnlcalib_wrapper API (load_models / calibrate); no
 modification of either system.  Saves, per frame, the full CalibResult
 metadata as JSON and the homography as .npy (world centre-origin metres ->
-image pixels, exactly as documented in approach_4/calibration.py).
+image pixels, exactly as documented in pipeline/pnlcalib_wrapper/calibration.py).
 """
 
 from __future__ import annotations
@@ -20,21 +20,21 @@ import time
 import cv2
 import numpy as np
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(ROOT, "ai-workspace", "football-analysis"))
+HERE = os.path.dirname(os.path.abspath(__file__))  # .../eval/eval_comparison
+ROOT = os.path.dirname(os.path.dirname(HERE))        # project root
+sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 
-from approach_4.calibration import CalibGrade, calibrate, load_models  # noqa: E402
+from pnlcalib_wrapper.calibration import CalibGrade, calibrate, load_models  # noqa: E402
 
 
 OUT = os.path.join(HERE, "out")
 
 def discover_frames() -> list[tuple[str, str]]:
-    """All top-level images in Samples/, with short stable slugs."""
+    """All top-level images in data/samples/, with short stable slugs."""
     import glob
     out = []
-    for p in sorted(glob.glob(os.path.join(ROOT, "Samples", "*.png"))
-                    + glob.glob(os.path.join(ROOT, "Samples", "*.jpg"))):
+    for p in sorted(glob.glob(os.path.join(ROOT, "data", "samples", "*.png"))
+                    + glob.glob(os.path.join(ROOT, "data", "samples", "*.jpg"))):
         base = os.path.basename(p)
         m = re.search(r"(\d{4}-\d{2}-\d{2}) (\d{2})-(\d{2})-(\d{2})", base)
         if m:
