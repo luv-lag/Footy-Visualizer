@@ -61,11 +61,11 @@ SPACING_SIZE: str = "md"
 BASE_BG: str = "#0c1116"
 
 # ── full-page background photo ────────────────────────────────────────────
-#: The colorized (AI-restored) historical photograph at the project root.
-#: Busy and warm-toned, so it gets a double knock-back (filter + scrim
+#: The colorized (AI-restored) historical photograph, shipped alongside the
+#: app. Busy and warm-toned, so it gets a double knock-back (filter + scrim
 #: below) to read as a subtle atmospheric backdrop behind the WHOLE page.
 HERO_BACKGROUND_IMAGE: str = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "background image.png"
+    os.path.dirname(os.path.abspath(__file__)), "background_image.png"
 )
 
 #: Photo layer filter: desaturate + darken + soften so detail recedes.

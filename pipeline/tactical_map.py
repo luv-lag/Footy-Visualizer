@@ -21,7 +21,7 @@ like a team member.
 Running the demo (the brasilscotland2 frame exercises the PnLCalib
 fallback, which needs torch):
 
-    ai-workspace/PnLCalib/.venv/bin/python tactical_map.py
+    vendor/PnLCalib/.venv/bin/python pipeline/tactical_map.py
 """
 
 from __future__ import annotations
@@ -39,16 +39,20 @@ from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 from matplotlib.patches import Arc, Circle, Rectangle
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.path.dirname(os.path.abspath(__file__))  # .../pipeline
+_ROOT = os.path.dirname(_HERE)                        # project root
+_EVAL_DIR = os.path.join(_ROOT, "eval")               # debug_tools lives here
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
+if _EVAL_DIR not in sys.path:
+    sys.path.insert(0, _EVAL_DIR)
 
 from debug_tools import CLASS_COLORS, TEAM_COLORS, _bbox_corners, _scale_factor  # noqa: E402
 from detection import Detection  # noqa: E402
 from frame_analysis import PITCH_LENGTH_M, PITCH_WIDTH_M, FrameAnalysis, PlayerRecord  # noqa: E402
 from team_id_v2 import cached_infer  # noqa: E402
 
-_DEFAULT_CACHE_DIR = os.path.join(_HERE, "detection_cache")
+_DEFAULT_CACHE_DIR = os.path.join(_ROOT, "data", "detection_cache")
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -396,13 +400,13 @@ def render_tactical_map(
 if __name__ == "__main__":
     from frame_analysis import analyze_frame
 
-    out_dir = os.path.join(_HERE, "debug_output")
+    out_dir = os.path.join(_ROOT, ".cache", "debug_output")
     os.makedirs(out_dir, exist_ok=True)
     DEMO_FRAMES = [
         # pitchcal calibrates this one directly:
-        os.path.join(_HERE, "Samples", "Screenshot From 2026-06-26 13-45-51.png"),
+        os.path.join(_ROOT, "data", "samples", "Screenshot From 2026-06-26 13-45-51.png"),
         # pitchcal refuses; PnLCalib fallback passes the orientation gate:
-        os.path.join(_HERE, "Samples", "brasilscotland2.png"),
+        os.path.join(_ROOT, "data", "samples", "brasilscotland2.png"),
     ]
     for path in DEMO_FRAMES:
         fa = analyze_frame(path)

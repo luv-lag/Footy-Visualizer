@@ -13,12 +13,12 @@ Launch (MUST be the PnLCalib venv -- the calibration fallback needs its
 torch + CUDA; gradio is installed there too):
 
     cd "/home/projects/Projects/Football Project"
-    ai-workspace/PnLCalib/.venv/bin/python app.py
+    vendor/PnLCalib/.venv/bin/python app/app.py
 
 then open http://127.0.0.1:7860 (a browser tab is also opened for you).
 
-Dependency note: ``gradio`` is a new dependency of THIS file only, installed
-into ai-workspace/PnLCalib/.venv specifically (uv pip install gradio with
+Dependency note: ``gradio`` is a dependency of THIS file only, installed
+into vendor/PnLCalib/.venv specifically (uv pip install gradio with
 VIRTUAL_ENV pointing at that venv) -- not system-wide, not a new venv.
 
 The first Analyze click that hits the fallback path loads the PnLCalib
@@ -35,9 +35,13 @@ import traceback
 
 import gradio as gr
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.path.dirname(os.path.abspath(__file__))  # .../app
+_ROOT = os.path.dirname(_HERE)                        # project root
+_PIPELINE_DIR = os.path.join(_ROOT, "pipeline")
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
+if _PIPELINE_DIR not in sys.path:
+    sys.path.insert(0, _PIPELINE_DIR)
 
 from frame_analysis import analyze_frame  # noqa: E402
 from tactical_map import render_tactical_map  # noqa: E402
@@ -54,9 +58,9 @@ from ui_theme import CUSTOM_CSS, DARK_MODE, FORCE_DARK_JS, THEME  # noqa: E402
 #:                           insufficient_features) for variety between takes
 #: All three have cached Roboflow detections, so no take needs the API.
 EXAMPLE_FRAMES: list[str] = [
-    os.path.join(_HERE, "Samples", "Screenshot From 2026-06-26 13-45-51.png"),
-    os.path.join(_HERE, "Samples", "brasilscotland2.png"),
-    os.path.join(_HERE, "Samples", "Screenshot From 2026-07-05 20-50-21.png"),
+    os.path.join(_ROOT, "data", "samples", "Screenshot From 2026-06-26 13-45-51.png"),
+    os.path.join(_ROOT, "data", "samples", "brasilscotland2.png"),
+    os.path.join(_ROOT, "data", "samples", "Screenshot From 2026-07-05 20-50-21.png"),
 ]
 
 
