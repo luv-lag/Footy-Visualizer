@@ -15,8 +15,8 @@ Exercises the cascade branches that the happy-path demos never hit:
 
 Cases 2/3 replace ``frame_analysis._pnlcalib_modules`` with a torch-free
 test double for the calibration side while reusing the REAL production
-projection module (``approach_4.projection`` is numpy-only), so this file
-runs in the project venv without PnLCalib's torch environment.
+projection module (``pnlcalib_wrapper.projection`` is numpy-only), so this
+file runs in the project venv without PnLCalib's torch environment.
 
 Run:  .venv/bin/python tests/test_frame_analysis_failures.py
 """
@@ -33,16 +33,16 @@ from typing import Any
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 
 import frame_analysis  # noqa: E402
 from detection import Detection  # noqa: E402
 from frame_analysis import FrameAnalysis, analyze_frame  # noqa: E402
 
-SCR1 = os.path.join(ROOT, "Samples", "Screenshot From 2026-06-26 13-45-51.png")
-BRASIL = os.path.join(ROOT, "Samples", "brasilscotland2.png")
-CACHE = os.path.join(ROOT, "detection_cache")
-H_PNL_BRASIL = os.path.join(ROOT, "eval_comparison", "out", "H_pnlcalib_brasilscotla.npy")
+SCR1 = os.path.join(ROOT, "data", "samples", "Screenshot From 2026-06-26 13-45-51.png")
+BRASIL = os.path.join(ROOT, "data", "samples", "brasilscotland2.png")
+CACHE = os.path.join(ROOT, "data", "detection_cache")
+H_PNL_BRASIL = os.path.join(ROOT, "tests", "fixtures", "H_pnlcalib_brasilscotla.npy")
 
 FAILURES: list[str] = []
 
@@ -85,7 +85,7 @@ class _StubCalibResult:
 
 
 class _StubPnlCalibration:
-    """Torch-free double for approach_4.calibration with a scripted result."""
+    """Torch-free double for pnlcalib_wrapper.calibration with a scripted result."""
 
     CalibGrade = _StubGrade
 
@@ -103,10 +103,7 @@ class _StubPnlCalibration:
 
 def _patch_pnlcalib(result: _StubCalibResult):
     """Point frame_analysis at the stub calibration + REAL projection."""
-    fa_root = os.path.join(ROOT, "ai-workspace", "football-analysis")
-    if fa_root not in sys.path:
-        sys.path.insert(0, fa_root)
-    from approach_4 import projection as real_projection  # numpy-only
+    from pnlcalib_wrapper import projection as real_projection  # numpy-only
 
     stub = _StubPnlCalibration(result)
     frame_analysis._pnlcalib_modules = lambda: (stub, real_projection)

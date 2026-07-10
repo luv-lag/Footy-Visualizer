@@ -11,12 +11,14 @@ against rendered ground truth from both sides of the pitch.
 
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 
 import numpy as np
 
-sys.path.insert(0, ".")
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_ROOT, "pipeline"))
 
 from pitchcal.geometry import (  # noqa: E402
     DivisionModel,

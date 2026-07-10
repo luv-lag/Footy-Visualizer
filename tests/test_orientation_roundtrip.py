@@ -36,7 +36,7 @@ import sys
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from test_frame_analysis_failures import (  # noqa: E402  (shared test doubles)
@@ -49,8 +49,8 @@ from test_frame_analysis_failures import (  # noqa: E402  (shared test doubles)
 
 from frame_analysis import FrameAnalysis, analyze_frame  # noqa: E402
 
-BRASIL = os.path.join(ROOT, "Samples", "brasilscotland2.png")
-H_PNL_BRASIL = os.path.join(ROOT, "eval_comparison", "out", "H_pnlcalib_brasilscotla.npy")
+BRASIL = os.path.join(ROOT, "data", "samples", "brasilscotland2.png")
+H_PNL_BRASIL = os.path.join(ROOT, "tests", "fixtures", "H_pnlcalib_brasilscotla.npy")
 
 #: Pass tolerance for the decisive positional check ("within a few cm").
 #: The recovery is pure matrix algebra, so an actually-correct composition
