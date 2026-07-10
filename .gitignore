@@ -8,36 +8,31 @@ __pycache__/
 
 # --- virtual environments ----------------------------------------------------
 # Two by design (see README): the project venv, and PnLCalib's own torch/CUDA
-# venv. A third (.venv-synloc) existed and has been consolidated into
-# vendor/PnLCalib/.venv.
+# venv (which also covers the SynLoc eval scripts -- a third, near-duplicate
+# venv was consolidated into this one).
 .venv/
-.venv-*/
 vendor/PnLCalib/.venv/
 
-# --- model weights (vendored, large, publicly redownloadable) ---------------
-vendor/PnLCalib/weights/
+# --- vendored third-party PnLCalib repo --------------------------------------
+# Not committed at all: it's a real external repo (github.com/mguti97/PnLCalib,
+# see its own .git/config) with ~49M of its own examples/figures assets plus
+# 506M of weights -- cloned separately per the README, not forked into this
+# repo's history. Only pipeline/pnlcalib_wrapper/ (our code, which imports
+# from it at runtime) is ours to track.
+vendor/PnLCalib/
 *.pt
 
 # --- datasets (external, large, redownloadable -- not source) ---------------
 data/SoccerNet/
 
 # --- generated / regeneratable output (never source) -------------------------
-# NOTE: detection_cache/ (pre-move) / data/detection_cache/ (post-move) is
-# deliberately NOT listed here -- those JSONs are committed fixtures (tests
-# and the demo app's example frames load them by exact filename to avoid
-# needing a live Roboflow API key). Same for tests/fixtures/*.npy.
+# NOTE: data/detection_cache/ is deliberately NOT listed here -- those JSONs
+# are committed fixtures (tests and the demo app's example frames load them
+# by exact filename to avoid needing a live Roboflow API key). Same for
+# tests/fixtures/*.npy.
 .cache/
 eval/eval_comparison/out/
-ai-workspace/diag_*.png
-ai-workspace/synloc_calibration_eval.json
-
-# --- transitional: pre-reorg paths (this repo is mid-reorganization at
-# init; these lines cover the OLD locations of things the patterns above
-# already cover at their NEW locations post-move, and get deleted once the
-# move lands and these paths stop existing) ----------------------------------
-debug_output/
-Samples/data/
-eval_comparison/out/
+archive/outputs/
 
 # --- editor / OS ---------------------------------------------------------------
 .DS_Store
