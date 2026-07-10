@@ -48,6 +48,11 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
+_HERE = os.path.dirname(os.path.abspath(__file__))  # .../pipeline
+_ROOT = os.path.dirname(_HERE)                        # project root
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
 from detection import Detection, infer
 
 # --------------------------------------------------------------------------
@@ -365,9 +370,9 @@ def assign_teams_v2(image_path: str, detections: list[Detection]) -> dict:
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg")
 
-#: Where cached Roboflow responses and debug renders go. Kept out of the
-#: repo's own debug_output so v1 and v2 artifacts don't mix.
-V2_OUTPUT_DIR = "v2_output"
+#: Where cached Roboflow responses and debug renders go. Kept out of
+#: debug_output so v1 and v2 artifacts don't mix.
+V2_OUTPUT_DIR = os.path.join(_ROOT, ".cache", "v2_output")
 
 TEAM_DRAW_COLORS = {0: (255, 0, 255), 1: (255, 255, 0)}  # magenta / cyan (BGR)
 
@@ -552,6 +557,6 @@ def run_batch(samples_dir: str, output_dir: str) -> None:
 
 
 if __name__ == "__main__":
-    samples = sys.argv[1] if len(sys.argv) > 1 else "./Samples"
+    samples = sys.argv[1] if len(sys.argv) > 1 else os.path.join(_ROOT, "data", "samples")
     output = sys.argv[2] if len(sys.argv) > 2 else V2_OUTPUT_DIR
     run_batch(samples, output)
