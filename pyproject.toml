@@ -1,0 +1,11 @@
+[project]
+name = "football-project"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "inference-sdk>=1.3.3",
+    "opencv-python>=4.10.0.84",
+    "python-dotenv>=1.2.2",
+    "scikit-image>=0.26.0",
+    "scikit-learn>=1.9.0",
+]

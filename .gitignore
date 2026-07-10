@@ -1,0 +1,50 @@
+# --- secrets ---------------------------------------------------------------
+.env
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+
+# --- virtual environments ----------------------------------------------------
+# Two by design (see README): the project venv, and PnLCalib's own torch/CUDA
+# venv. A third (.venv-synloc) existed and has been consolidated into
+# vendor/PnLCalib/.venv.
+.venv/
+.venv-*/
+vendor/PnLCalib/.venv/
+
+# --- model weights (vendored, large, publicly redownloadable) ---------------
+vendor/PnLCalib/weights/
+*.pt
+
+# --- datasets (external, large, redownloadable -- not source) ---------------
+data/SoccerNet/
+
+# --- generated / regeneratable output (never source) -------------------------
+# NOTE: detection_cache/ (pre-move) / data/detection_cache/ (post-move) is
+# deliberately NOT listed here -- those JSONs are committed fixtures (tests
+# and the demo app's example frames load them by exact filename to avoid
+# needing a live Roboflow API key). Same for tests/fixtures/*.npy.
+.cache/
+eval/eval_comparison/out/
+ai-workspace/diag_*.png
+ai-workspace/synloc_calibration_eval.json
+
+# --- transitional: pre-reorg paths (this repo is mid-reorganization at
+# init; these lines cover the OLD locations of things the patterns above
+# already cover at their NEW locations post-move, and get deleted once the
+# move lands and these paths stop existing) ----------------------------------
+debug_output/
+Samples/data/
+eval_comparison/out/
+
+# --- editor / OS ---------------------------------------------------------------
+.DS_Store
+
+# --- everything left under ai-workspace/ after the reorg move --------------
+# (misc/ -- a completed practice exercise, kept locally, not for the public
+# repo; memory/ -- this machine's Claude Code MCP memory store, not project
+# data; football-analysis/_to_review/ -- zipped duplicates of data/SoccerNet,
+# gitignored now per team decision, deletion deferred to a later cleanup)
+ai-workspace/
