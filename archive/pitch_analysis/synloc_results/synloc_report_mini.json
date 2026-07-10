@@ -1,0 +1,371 @@
+{
+  "meta": {
+    "dataset": "SpiideoSynLoc",
+    "split": "mini",
+    "limit": null,
+    "n_images": 7,
+    "n_abstain": 0,
+    "n_detections": 98,
+    "n_matched_players": 96,
+    "locsim_tau": 1,
+    "locsim_half_m": 0.48101789276466544,
+    "score_threshold": 0.5,
+    "global_frame": {
+      "affine": [
+        [
+          9.859378273199402e-14,
+          -0.10000000000026302,
+          35.00000000000002
+        ],
+        [
+          -0.09999999999983095,
+          -4.510003481783542e-13,
+          60.00000000000002
+        ]
+      ],
+      "candidate_id": "r3m",
+      "winner_median_m": 8.172520652339086,
+      "runner_up_median_m": 17.948195872517775,
+      "margin_m": 9.77567522017869,
+      "decisive": true,
+      "ranking": [
+        [
+          "r3m",
+          8.172520652339086
+        ],
+        [
+          "r1",
+          17.948195872517775
+        ],
+        [
+          "r2",
+          23.27307643752182
+        ],
+        [
+          "r0m",
+          32.81872096384102
+        ],
+        [
+          "r1m",
+          43.03225291319467
+        ],
+        [
+          "r2m",
+          44.27089282490603
+        ],
+        [
+          "r3",
+          45.77406395289364
+        ],
+        [
+          "r0",
+          50.244368801048935
+        ]
+      ]
+    },
+    "timestamp": "2026-06-29T03:12:55",
+    "cache": "/home/projects/ai-workspace/football-analysis/pitch_analysis/synloc_results/synloc_ests_mini.json"
+  },
+  "official": {
+    "mAP_LocSim": 3.6223134508572814e-05,
+    "precision_50": 0.012195121951219513,
+    "recall_50": 0.0,
+    "f1_50": 0.0,
+    "score_threshold": 0.5,
+    "frame_accuracy": 0.0
+  },
+  "meter_error": {
+    "in_hull": {
+      "n": 40,
+      "median": 7.2326322856767415,
+      "iqr": [
+        5.261462215064977,
+        9.811486611681055
+      ],
+      "mean": 8.683727171025684,
+      "p90": 16.422533294366183
+    },
+    "extrapolated": {
+      "n": 56,
+      "median": 10.597524315146428,
+      "iqr": [
+        5.187854164390964,
+        19.000122101693222
+      ],
+      "mean": 14.76209249252037,
+      "p90": 32.112813982772465
+    },
+    "overall": {
+      "n": 96,
+      "median": 7.9488104796390004,
+      "iqr": [
+        5.187854164390964,
+        15.533075592615239
+      ],
+      "mean": 12.229440275230916,
+      "p90": 29.1814397485692
+    }
+  },
+  "error_vs_hull_distance": [
+    {
+      "lo_m": null,
+      "hi_m": -20,
+      "n": 0,
+      "median_err_m": null
+    },
+    {
+      "lo_m": -20,
+      "hi_m": -10,
+      "n": 10,
+      "median_err_m": 5.418025646994194
+    },
+    {
+      "lo_m": -10,
+      "hi_m": -5,
+      "n": 14,
+      "median_err_m": 7.534600562783069
+    },
+    {
+      "lo_m": -5,
+      "hi_m": -2,
+      "n": 10,
+      "median_err_m": 7.869249572106139
+    },
+    {
+      "lo_m": -2,
+      "hi_m": 0,
+      "n": 6,
+      "median_err_m": 8.711967557327453
+    },
+    {
+      "lo_m": 0,
+      "hi_m": 2,
+      "n": 8,
+      "median_err_m": 7.904084176021826
+    },
+    {
+      "lo_m": 2,
+      "hi_m": 5,
+      "n": 4,
+      "median_err_m": 5.877861675426029
+    },
+    {
+      "lo_m": 5,
+      "hi_m": 10,
+      "n": 16,
+      "median_err_m": 6.496634037467029
+    },
+    {
+      "lo_m": 10,
+      "hi_m": 20,
+      "n": 12,
+      "median_err_m": 13.12220295914392
+    },
+    {
+      "lo_m": 20,
+      "hi_m": null,
+      "n": 16,
+      "median_err_m": 19.63240680499894
+    }
+  ],
+  "bimodality": {
+    "frac_below_1m": 0.0,
+    "frac_above_15m": 0.2604166666666667,
+    "bimodal_warning": false
+  },
+  "global_frame_validity": {
+    "global_winner": "r3m",
+    "n_images": 7,
+    "n_consistent_with_global": 5,
+    "frac_consistent": 0.7142857142857143,
+    "valid": false,
+    "verdict": "global frame INVALID: per-frame optimal orientation matches the global winner on only 5/7 frames. The headline mAP-LocSim reflects orientation failure (the pipeline cannot recover a consistent pitch end from symmetric half-views), not pure localization error. See orientation_granted_diagnostic.",
+    "per_image_best": [
+      {
+        "image_id": 0,
+        "best": "r3m",
+        "median_m": 8.172520652339086
+      },
+      {
+        "image_id": 1,
+        "best": "r1",
+        "median_m": 14.317903146276105
+      },
+      {
+        "image_id": 2,
+        "best": "r3m",
+        "median_m": 4.497141127398
+      },
+      {
+        "image_id": 3,
+        "best": "r3m",
+        "median_m": 7.525738248653159
+      },
+      {
+        "image_id": 4,
+        "best": "r2m",
+        "median_m": 18.635659360230733
+      },
+      {
+        "image_id": 5,
+        "best": "r3m",
+        "median_m": 4.915129691680091
+      },
+      {
+        "image_id": 6,
+        "best": "r3m",
+        "median_m": 15.944193351213084
+      }
+    ]
+  },
+  "orientation_granted_diagnostic": {
+    "gt_assisted": true,
+    "warning": "OPTIMISTIC LOWER BOUND, NOT A FROM-SCRATCH RESULT. Each frame is scored under its own error-minimising dihedral flip, chosen using ground truth. Use only to separate localization error from the pipeline's inability to orient a symmetric pitch.",
+    "official": {
+      "mAP_LocSim": 3.6223134508572814e-05,
+      "precision_50": 0.012195121951219513,
+      "recall_50": 0.0,
+      "f1_50": 0.0,
+      "score_threshold": 0.5,
+      "frame_accuracy": 0.0
+    },
+    "meter_error": {
+      "in_hull": {
+        "n": 40,
+        "median": 6.843848850566356,
+        "iqr": [
+          4.875799872750819,
+          9.811486611681055
+        ],
+        "mean": 8.224369945594521,
+        "p90": 14.704750795530378
+      },
+      "extrapolated": {
+        "n": 56,
+        "median": 9.979085077882331,
+        "iqr": [
+          4.9383763184551475,
+          16.38266501577481
+        ],
+        "mean": 15.58607808227411,
+        "p90": 41.106341016565636
+      },
+      "overall": {
+        "n": 96,
+        "median": 7.645539399406054,
+        "iqr": [
+          4.919572580400683,
+          14.400253600155963
+        ],
+        "mean": 12.518699691990946,
+        "p90": 29.572075625322192
+      }
+    },
+    "error_vs_hull_distance": [
+      {
+        "lo_m": null,
+        "hi_m": -20,
+        "n": 0,
+        "median_err_m": null
+      },
+      {
+        "lo_m": -20,
+        "hi_m": -10,
+        "n": 10,
+        "median_err_m": 5.418025646994194
+      },
+      {
+        "lo_m": -10,
+        "hi_m": -5,
+        "n": 14,
+        "median_err_m": 6.988766242142426
+      },
+      {
+        "lo_m": -5,
+        "hi_m": -2,
+        "n": 10,
+        "median_err_m": 7.869249572106139
+      },
+      {
+        "lo_m": -2,
+        "hi_m": 0,
+        "n": 6,
+        "median_err_m": 8.711967557327453
+      },
+      {
+        "lo_m": 0,
+        "hi_m": 2,
+        "n": 8,
+        "median_err_m": 7.904084176021826
+      },
+      {
+        "lo_m": 2,
+        "hi_m": 5,
+        "n": 4,
+        "median_err_m": 5.877861675426029
+      },
+      {
+        "lo_m": 5,
+        "hi_m": 10,
+        "n": 16,
+        "median_err_m": 6.496634037467029
+      },
+      {
+        "lo_m": 10,
+        "hi_m": 20,
+        "n": 12,
+        "median_err_m": 9.053508992461538
+      },
+      {
+        "lo_m": 20,
+        "hi_m": null,
+        "n": 16,
+        "median_err_m": 25.246972519820858
+      }
+    ]
+  },
+  "per_image": [
+    {
+      "image_id": 0,
+      "file_name": "000000.jpg",
+      "grade": "solid",
+      "n_players": 19
+    },
+    {
+      "image_id": 1,
+      "file_name": "000001.jpg",
+      "grade": "solid",
+      "n_players": 2
+    },
+    {
+      "image_id": 2,
+      "file_name": "000002.jpg",
+      "grade": "solid",
+      "n_players": 13
+    },
+    {
+      "image_id": 3,
+      "file_name": "000003.jpg",
+      "grade": "solid",
+      "n_players": 13
+    },
+    {
+      "image_id": 4,
+      "file_name": "000004.jpg",
+      "grade": "solid",
+      "n_players": 20
+    },
+    {
+      "image_id": 5,
+      "file_name": "000005.jpg",
+      "grade": "solid",
+      "n_players": 22
+    },
+    {
+      "image_id": 6,
+      "file_name": "000006.jpg",
+      "grade": "solid",
+      "n_players": 9
+    }
+  ]
+}
