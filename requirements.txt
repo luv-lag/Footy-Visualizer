@@ -1,2 +1,5 @@
 inference-sdk
+opencv-python
 python-dotenv
+scikit-image
+scikit-learn

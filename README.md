@@ -74,10 +74,13 @@ uv pip install --python .venv/bin/python -r requirements.txt
 # (or: pip install -e . / pip install -r requirements.txt, per pyproject.toml)
 
 # 2. PnLCalib venv (the calibration fallback + the demo app, since the app
-#    needs the fallback available)
+#    needs the fallback available). The demo app (app/app.py) imports
+#    straight from pipeline/, so this venv also needs this project's own
+#    requirements.txt on top of PnLCalib's -- not just PnLCalib's deps + gradio.
 git clone https://github.com/mguti97/PnLCalib vendor/PnLCalib
 uv venv vendor/PnLCalib/.venv
 uv pip install --python vendor/PnLCalib/.venv/bin/python -r vendor/PnLCalib/requirements.txt
+uv pip install --python vendor/PnLCalib/.venv/bin/python -r requirements.txt
 uv pip install --python vendor/PnLCalib/.venv/bin/python gradio
 # download PnLCalib's SV_kp / SV_lines weights per its own README into
 # vendor/PnLCalib/weights/ -- not included here (500MB+, publicly hosted)
