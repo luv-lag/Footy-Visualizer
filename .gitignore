@@ -36,6 +36,7 @@ archive/outputs/
 
 # --- editor / OS ---------------------------------------------------------------
 .DS_Store
+.obsidian/
 
 # --- everything left under ai-workspace/ after the reorg move --------------
 # (misc/ -- a completed practice exercise, kept locally, not for the public

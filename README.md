@@ -1,16 +1,10 @@
-# Football Tactical Map
+# Football Map
 
-One broadcast football frame in &rarr; every visible player's real-world
-pitch position out, on a top-down tactical map -- team-colored, with an
-honest confidence readout for how much the pipeline trusts its own
-calibration on that specific frame.
+![demo](docs/demo.png)
 
-<!-- TODO: add a demo screenshot or short GIF of the Gradio app here,
-     e.g. ![demo](docs/demo.gif) -- captured manually, not generated. -->
+## Broadcast -> Topdown Map
 
-## What it does, and why it's hard
-
-A TV broadcast camera isn't looking straight down at the pitch -- it's
+A TV broadcast camera isn't looking straight down at the pitch. It's
 elevated, angled, and lensed such that two players standing the same
 distance apart on the pitch can look very different distances apart in
 the frame. Recovering real metric positions from a single still image
@@ -37,10 +31,10 @@ The pipeline:
    metric coordinate per player, regardless of which calibrator produced it.
 6. **Rendering** (`pipeline/tactical_map.py`) -- the combined view: annotated
    frame, top-down map, and a status strip that states calibration source
-   and confidence rather than rendering a plausible-looking map when the
+   and confidence rather than rendering a plausible looking map when the
    pipeline doesn't actually trust its output.
 
-## Tech stack
+## Stack
 
 - **Detection**: Roboflow-hosted YOLO (`inference-sdk`)
 - **Calibration**: OpenCV + numpy/scipy (pitchcal, from-scratch homography
@@ -66,7 +60,7 @@ data/         sample frames + cached detections (tracked); the SoccerNet
 
 ### Why two virtual environments
 
-This is a deliberate architectural choice, not disorganization. PnLCalib
+This is a deliberate architectural choice. PnLCalib
 needs a specific PyTorch/CUDA build; the rest of the pipeline doesn't need
 torch at all. Keeping them in separate venvs means the lightweight path
 (detection, team ID, pitchcal, the test suite) never pulls in a multi-GB
@@ -90,7 +84,7 @@ uv pip install --python vendor/PnLCalib/.venv/bin/python gradio
 ```
 
 Roboflow API key (only needed for frames *not* already in
-`data/detection_cache/` -- the bundled sample frames and the demo app's
+`data/detection_cache/`  the bundled sample frames and the demo app's
 three example frames all have cached detections, so a fresh clone can run
 the test suite and the demo without one):
 
@@ -118,42 +112,13 @@ takes over.
 .venv/bin/python tests/test_orientation_roundtrip.py
 ```
 
-All three run in the lightweight project venv -- the PnLCalib-fallback
+All three run in the lightweight project venv. The PnLCalib fallback
 tests use a torch-free stub for the calibration half and exercise the
-real (numpy-only) projection code, so the torch venv isn't required just
+real (numpy only) projection code, so the torch venv isn't required just
 to verify the pipeline's failure handling.
 
-## Challenges / what I learned
-
-**A silent coordinate-frame bug.** PnLCalib's world frame is centre-origin
-with +Y pointing the *opposite* way to pitchcal's corner-origin convention.
-A naive translation-only conversion between the two silently mirrors every
-player position across the pitch's long axis -- and the bug is invisible in
-any overlay or top-down visual check, because a football pitch's markings
-are symmetric under exactly that flip. It only shows up in actual point
-positions, not in anything that looks at the pitch outline. Catching this
-took a dedicated handedness test rather than trusting "the overlay looks
-right" (see `pipeline/frame_analysis.py`'s `center_to_corner` and
-`eval/eval_comparison/validate_orientation_check.py`). It's the kind of bug
-this whole codebase ended up organized around being suspicious of: several
-of the real failures here were only detectable by specifically checking the
-thing that could be silently wrong, not by eyeballing output.
-
-**Comparing two calibration approaches head-to-head, honestly.** Rather than
-assuming pitchcal (built for this project) or PnLCalib (an external,
-published model) was simply "better," `eval/eval_comparison/` runs both on
-the same frames and scores both with the same yardstick, with the explicit
-caveat in that scorer's own docstring that it was tuned around pitchcal and
-so isn't perfectly neutral -- visual overlay checks are treated as the
-primary evidence, not the automated score alone.
-
-**Iterating toward a principled fix, not a patch.** Both major subsystems
-here (calibration and team identification) went through multiple
-approaches before landing on their current design, and in both cases the
-replacement was built to directly target a diagnosed failure mode rather
-than to patch symptoms. See `archive/README.md` for that history in more
-detail -- it's kept in the repo specifically because the iteration is part
-of the story, not something to hide.
+## AI 
+This project was built with various AI coding tools. AI generated results were verified (the independent evaluation and synthetic test suites throughout `eval/`). 
 
 ## Licensing note
 
