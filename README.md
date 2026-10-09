@@ -34,6 +34,39 @@ The pipeline:
    and confidence rather than rendering a plausible looking map when the
    pipeline doesn't actually trust its output.
 
+## Video (work in progress)
+
+`pipeline/video/` extends the single-frame pipeline to clips from one
+continuous camera (phase 1; broadcast cut/replay handling comes next):
+
+1. **Camera tracking** (`camera.py`): anchor with pitchcal (optionally the
+   PnLCalib fallback), propagate the homography every frame with optical
+   flow on grass pixels, refine against the frame's own markings every few
+   frames, and report "lost" rather than guess when the fit decays. Frames
+   before the first anchor are recovered by propagating backwards.
+2. **Tracking in pitch space** (`tracking.py`): foot points are mapped to
+   metres before association, so camera pans and zooms don't break IDs
+   (image-space IoU trackers fragment badly on small, panning players).
+   Any tracker from Roboflow's `trackers` library can be used. Fragments are
+   stitched offline by pitch-space reachability.
+3. **Teams per track** (`teams.py`): `team_id_v2` signatures are pooled
+   across the clip, clustered once, and each track takes a majority vote.
+4. **Positions** (`positions.py`): an off-pitch gate (drops stands and
+   scoreboard detections), interpolation across the detection stride,
+   smoothing, and a speed gate that flags rather than draws implausible jumps.
+
+```bash
+.venv/bin/python pipeline/video/run_video.py clip.mp4 --out out/clip \
+    --detector hosted --detect-stride 3
+```
+
+This writes `tracks.csv` (per frame and track: pitch x/y, team, speed),
+`camera.csv`, `minimap.mp4` (annotated frame plus top-down map) and
+`summary.json` to `out/clip/`. Detections are cached in
+`out/clip/detections.json`, so re-runs don't call the detector again. Use
+`--detector local` to run the same model locally through Roboflow's
+`inference` package (CPU or GPU).
+
 ## Stack
 
 - **Detection**: Roboflow-hosted YOLO (`inference-sdk`)
@@ -46,7 +79,8 @@ The pipeline:
 ## Project layout
 
 ```
-pipeline/     core library -- detection, team ID, calibration cascade, rendering
+pipeline/     core library -- detection, team ID, calibration cascade, rendering;
+              pipeline/video/ is the video extension
 app/          the Gradio demo app
 eval/         evaluation and diagnostic tooling (not part of the live app)
 tests/        the test suite

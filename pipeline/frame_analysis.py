@@ -226,6 +226,48 @@ def _pnlcalib_modules() -> tuple[Any, Any]:
     return pnl_calibration, pnl_projection
 
 
+def pnlcalib_corner_homography(
+    frame_bgr: np.ndarray, device: str
+) -> tuple[np.ndarray | None, dict[str, Any]]:
+    """Run PnLCalib and return its gated, canonical, corner-origin homography.
+
+    Steps 1-3 of :func:`_pnlcalib_fallback`'s flow, shared with the video
+    pipeline's camera tracker (which needs the homography itself rather
+    than projected players).
+
+    Returns:
+        (H_corner, detail): ``H_corner`` maps corner-origin pitch metres to
+        image pixels and is canonically oriented, or is None when PnLCalib
+        abstained or the orientation gate rejected its output (distinguish
+        via ``detail``).
+    """
+    global _PNL_MODELS
+    pnl_calibration, _ = _pnlcalib_modules()
+    if _PNL_MODELS is None:
+        _PNL_MODELS = pnl_calibration.load_models(device)
+    model_kp, model_l = _PNL_MODELS
+
+    res = pnl_calibration.calibrate(frame_bgr, model_kp, model_l, device=device)
+    detail: dict[str, Any] = {
+        "pnlcalib_grade": res.grade.value,
+        "pnlcalib_n_kp": res.n_kp,
+        "pnlcalib_reproj_err_px": float(res.reproj_err),
+    }
+    if res.grade != pnl_calibration.CalibGrade.PASS:
+        return None, detail
+
+    # Orientation gate.  The corner conversion is NOT a plain translation --
+    # PnLCalib's +Y is opposite the corner frame's, see center_to_corner.
+    H_corner_in = res.H @ _CORNER_TO_CENTER_XY
+    check = validate_and_canonicalize_homography(H_corner_in, frame_bgr)
+    detail["pnlcalib_orientation_valid"] = check.is_valid
+    detail["pnlcalib_was_flipped"] = check.was_flipped
+    detail["pnlcalib_orientation_reason"] = check.reason
+    if not check.is_valid:
+        return None, detail
+    return check.corrected_H, detail
+
+
 def _pnlcalib_fallback(
     frame_bgr: np.ndarray,
     person_dets: list[tuple[int, Detection]],
@@ -262,31 +304,13 @@ def _pnlcalib_fallback(
         abstained OR the gate rejected the homography (distinguish via
         ``detail``).
     """
-    global _PNL_MODELS
-    pnl_calibration, pnl_projection = _pnlcalib_modules()
-    if _PNL_MODELS is None:
-        _PNL_MODELS = pnl_calibration.load_models(device)
-    model_kp, model_l = _PNL_MODELS
-
-    res = pnl_calibration.calibrate(frame_bgr, model_kp, model_l, device=device)
-    detail: dict[str, Any] = {
-        "pnlcalib_grade": res.grade.value,
-        "pnlcalib_n_kp": res.n_kp,
-        "pnlcalib_reproj_err_px": float(res.reproj_err),
-    }
-    if res.grade != pnl_calibration.CalibGrade.PASS:
+    _, pnl_projection = _pnlcalib_modules()
+    H_corner, detail = pnlcalib_corner_homography(frame_bgr, device)
+    if H_corner is None:
+        # PnLCalib abstained, or the orientation gate rejected a physically
+        # impossible homography: do NOT fall through to using it.
         return {}, detail
-
-    # -- orientation gate (steps 2-4 of the docstring flow) ---------------
-    H_corner_in = res.H @ _CORNER_TO_CENTER_XY
-    check = validate_and_canonicalize_homography(H_corner_in, frame_bgr)
-    detail["pnlcalib_orientation_valid"] = check.is_valid
-    detail["pnlcalib_was_flipped"] = check.was_flipped
-    detail["pnlcalib_orientation_reason"] = check.reason
-    if not check.is_valid:
-        # Physically impossible homography: do NOT fall through to using it.
-        return {}, detail
-    H_center_corrected = check.corrected_H @ _CENTER_TO_CORNER_XY
+    H_center_corrected = H_corner @ _CENTER_TO_CORNER_XY
 
     # Production projection path: bbox dicts in centre+size format match
     # detection.Detection's bbox_center/bbox_size, and project_players'

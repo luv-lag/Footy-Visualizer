@@ -635,6 +635,7 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "trackers" },
 ]
 
 [package.optional-dependencies]
@@ -657,6 +658,7 @@ requires-dist = [
     { name = "scikit-image", specifier = ">=0.26.0" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
     { name = "scipy", specifier = ">=1.11" },
+    { name = "trackers", specifier = ">=2.6" },
 ]
 provides-extras = ["app", "dev"]
 
@@ -2722,6 +2724,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/87/d7/0535a28b1f5f24f6612fb3ff1e89fb1a8d160fee0f976e0aa6803862134b/tqdm-4.68.3.tar.gz", hash = "sha256:00dfa48452b6b6cfae3dd9885636c23d3422d1ec97c66d96818cbd5e0821d482", size = 170596, upload-time = "2026-06-17T07:36:52.105Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d8/8e/bb97bb0c71802080bfc8952937d174e49cfc50de5c951dd47b2496f0dcdb/tqdm-4.68.3-py3-none-any.whl", hash = "sha256:39832cc2def2789a6f29df83f172db7416cea70052c0907a57801c5f2fdccb03", size = 78337, upload-time = "2026-06-17T07:36:50.132Z" },
+]
+
+[[package]]
+name = "trackers"
+version = "2.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "opencv-python" },
+    { name = "pydeprecate" },
+    { name = "requests" },
+    { name = "rich" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "supervision" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/af/15/9aaaf90700b2464fc13553811cfb7620d84ede37c08870cdd68a4370e5e5/trackers-2.6.1.tar.gz", hash = "sha256:e8363838384cea25967b4501fff2565cc9c0e234a6f7eaea3ba5343b65a30561", size = 189426, upload-time = "2026-09-25T11:00:45.34Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/72/16/237ec75a634fc7e58c0470bdded80846d92979939ee66af804dae2161114/trackers-2.6.1-py3-none-any.whl", hash = "sha256:b5188de630f449958be3ce787fbb0375c69cfde094b6e4b4329cd79a98108501", size = 224724, upload-time = "2026-09-25T11:00:43.688Z" },
 ]
 
 [[package]]
