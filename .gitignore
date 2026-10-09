@@ -8,8 +8,7 @@ __pycache__/
 
 # --- virtual environments ----------------------------------------------------
 # Two by design (see README): the project venv, and PnLCalib's own torch/CUDA
-# venv (which also covers the SynLoc eval scripts -- a third, near-duplicate
-# venv was consolidated into this one).
+# venv (which also covers the SynLoc eval scripts).
 .venv/
 vendor/PnLCalib/.venv/
 
@@ -38,9 +37,5 @@ archive/outputs/
 .DS_Store
 .obsidian/
 
-# --- everything left under ai-workspace/ after the reorg move --------------
-# (misc/ -- a completed practice exercise, kept locally, not for the public
-# repo; memory/ -- this machine's Claude Code MCP memory store, not project
-# data; football-analysis/_to_review/ -- zipped duplicates of data/SoccerNet,
-# gitignored now per team decision, deletion deferred to a later cleanup)
+# --- local scratch space (not part of the project) ---------------------------
 ai-workspace/

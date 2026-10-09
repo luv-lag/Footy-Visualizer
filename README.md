@@ -69,9 +69,8 @@ everything else.
 
 ```bash
 # 1. project venv (detection, team ID, pitchcal, tests)
-uv venv .venv
-uv pip install --python .venv/bin/python -r requirements.txt
-# (or: pip install -e . / pip install -r requirements.txt, per pyproject.toml)
+uv sync --extra dev
+# (or: python -m venv .venv && .venv/bin/pip install -r requirements.txt pytest)
 
 # 2. PnLCalib venv (the calibration fallback + the demo app, since the app
 #    needs the fallback available). The demo app (app/app.py) imports
@@ -87,7 +86,7 @@ uv pip install --python vendor/PnLCalib/.venv/bin/python gradio
 ```
 
 Roboflow API key (only needed for frames *not* already in
-`data/detection_cache/`  the bundled sample frames and the demo app's
+`data/detection_cache/` -- the bundled sample frames and the demo app's
 three example frames all have cached detections, so a fresh clone can run
 the test suite and the demo without one):
 
@@ -110,12 +109,12 @@ takes over.
 ### Running the tests
 
 ```bash
-.venv/bin/python tests/test_pitchcal.py
-.venv/bin/python tests/test_frame_analysis_failures.py
-.venv/bin/python tests/test_orientation_roundtrip.py
+.venv/bin/python -m pytest -q
 ```
 
-All three run in the lightweight project venv. The PnLCalib fallback
+The suite runs in the lightweight project venv, and on every push via
+GitHub Actions (`.github/workflows/tests.yml`). Each test file can also be
+run directly as a script for verbose output. The PnLCalib fallback
 tests use a torch-free stub for the calibration half and exercise the
 real (numpy only) projection code, so the torch venv isn't required just
 to verify the pipeline's failure handling.

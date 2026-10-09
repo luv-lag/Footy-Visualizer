@@ -1,5 +1,9 @@
+# Keep in sync with [project].dependencies in pyproject.toml.
 inference-sdk
+matplotlib
+numpy
 opencv-python
 python-dotenv
 scikit-image
 scikit-learn
+scipy

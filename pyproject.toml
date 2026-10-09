@@ -1,11 +1,28 @@
 [project]
-name = "football-project"
+name = "footy-visualizer"
 version = "0.1.0"
+description = "Broadcast football frame -> detected players, teams, and a top-down tactical map."
 requires-python = ">=3.11"
 dependencies = [
     "inference-sdk>=1.3.3",
+    "matplotlib>=3.8",
+    "numpy>=1.26",
     "opencv-python>=4.10.0.84",
     "python-dotenv>=1.2.2",
     "scikit-image>=0.26.0",
     "scikit-learn>=1.9.0",
+    "scipy>=1.11",
 ]
+
+[project.optional-dependencies]
+# The demo app runs in the PnLCalib venv (see README); gradio is its only
+# extra dependency on top of the above.
+app = ["gradio"]
+dev = ["pytest>=8"]
+
+[tool.uv]
+# Not an installable package: pipeline/, app/ and eval/ are run in place.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

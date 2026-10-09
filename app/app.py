@@ -12,7 +12,7 @@ concerns.
 Launch (MUST be the PnLCalib venv -- the calibration fallback needs its
 torch + CUDA; gradio is installed there too):
 
-    cd "/home/projects/Projects/Football Project"
+    cd <repo root>
     vendor/PnLCalib/.venv/bin/python app/app.py
 
 then open http://127.0.0.1:7860 (a browser tab is also opened for you).

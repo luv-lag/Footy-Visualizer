@@ -41,14 +41,11 @@ from matplotlib.patches import Arc, Circle, Rectangle
 
 _HERE = os.path.dirname(os.path.abspath(__file__))  # .../pipeline
 _ROOT = os.path.dirname(_HERE)                        # project root
-_EVAL_DIR = os.path.join(_ROOT, "eval")               # debug_tools lives here
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
-if _EVAL_DIR not in sys.path:
-    sys.path.insert(0, _EVAL_DIR)
 
-from debug_tools import CLASS_COLORS, TEAM_COLORS, _bbox_corners, _scale_factor  # noqa: E402
 from detection import Detection  # noqa: E402
+from drawing import CLASS_COLORS, TEAM_COLORS, bbox_corners, scale_factor  # noqa: E402
 from frame_analysis import PITCH_LENGTH_M, PITCH_WIDTH_M, FrameAnalysis, PlayerRecord  # noqa: E402
 from team_id_v2 import cached_infer  # noqa: E402
 
@@ -56,13 +53,13 @@ _DEFAULT_CACHE_DIR = os.path.join(_ROOT, "data", "detection_cache")
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Colors: debug_tools's BGR conventions, converted for matplotlib
+# Colors: drawing.py's BGR conventions, converted for matplotlib
 # ──────────────────────────────────────────────────────────────────────────
 def _bgr_to_mpl(bgr: tuple[int, int, int]) -> tuple[float, float, float]:
     """Convert an OpenCV BGR uint8 color to a matplotlib RGB float triple.
 
     Args:
-        bgr: (blue, green, red) in 0-255, as stored in debug_tools.
+        bgr: (blue, green, red) in 0-255, as stored in drawing.py.
 
     Returns:
         (red, green, blue) in 0.0-1.0.
@@ -71,13 +68,13 @@ def _bgr_to_mpl(bgr: tuple[int, int, int]) -> tuple[float, float, float]:
     return (r / 255.0, g / 255.0, b / 255.0)
 
 
-#: Team colors, straight from debug_tools.TEAM_COLORS (team 0 azure blue,
+#: Team colors, straight from drawing.TEAM_COLORS (team 0 azure blue,
 #: team 1 magenta) so the final view matches every debug tool.
 TEAM_COLORS_MPL: dict[int, tuple[float, float, float]] = {
     team: _bgr_to_mpl(bgr) for team, bgr in TEAM_COLORS.items()
 }
 
-#: Non-player classes keep their debug_tools class colors.
+#: Non-player classes keep their drawing.py class colors.
 CLASS_COLORS_MPL: dict[str, tuple[float, float, float]] = {
     name: _bgr_to_mpl(bgr) for name, bgr in CLASS_COLORS.items()
 }
@@ -241,7 +238,7 @@ def _draw_frame_panel(
     """Render the broadcast frame with team-colored bounding boxes.
 
     Players are colored via :func:`_marker_color` (team colors / neutral
-    gray), goalkeeper/referee/ball keep their debug_tools class colors.
+    gray), goalkeeper/referee/ball keep their drawing.py class colors.
     Box geometry comes from the detection list (PlayerRecord carries only
     foot points), joined on ``detection_index``.
 
@@ -256,7 +253,7 @@ def _draw_frame_panel(
     ax.axis("off")
 
     by_index = {p.detection_index: p for p in analysis.players}
-    lw = max(1.0, 1.4 * _scale_factor(frame_bgr))  # debug_tools's 720p-relative scaling
+    lw = max(1.0, 1.4 * scale_factor(frame_bgr))  # debug_tools's 720p-relative scaling
     for index, det in enumerate(detections):
         record = by_index.get(index)
         if record is not None:
@@ -265,7 +262,7 @@ def _draw_frame_panel(
             color = CLASS_COLORS_MPL[det.class_name]
         else:
             continue
-        x1, y1, x2, y2 = _bbox_corners(det)
+        x1, y1, x2, y2 = bbox_corners(det)
         ax.add_patch(Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False,
                                edgecolor=color, lw=lw))
 
@@ -339,7 +336,7 @@ def render_tactical_map(
 
     Left: the broadcast frame with detections boxed in team colors (neutral
     gray for team-less players; goalkeeper/referee/ball in their
-    debug_tools class colors).  Right: a corner-origin 105 x 68 m tactical
+    drawing.py class colors).  Right: a corner-origin 105 x 68 m tactical
     map of pitch_position_m, or an explicit "no calibration" state when
     calibration_source is "pnlcalib_rejected"/"failed".  Top: a status
     strip (color-coded by outcome) with calibration source/confidence,
