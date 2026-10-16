@@ -64,14 +64,52 @@ def robust_signature(crop: np.ndarray) -> np.ndarray:
     return np.concatenate([_hue_mass(compute_signature(crop)), compute_signature(_balanced(crop))])
 
 
-class TeamVoter:
-    """Collect torso signatures per track, then cluster once and vote."""
+class TeamColourModel:
+    """The clip's two kit colours, fitted once on every outfield crop.
+
+    One model, two consumers: :class:`TeamVoter` uses it to give each
+    *track* a team (team assignment), and :class:`tracking.ColourGatedTracker`
+    uses it to label each *detection* before association, so tracks never
+    jump between kits (tracking cue).  Fitting it before tracking also keeps
+    team 0 / team 1 consistent between both uses.
+    """
 
     def __init__(self, max_fit_samples: int = 4000, seed: int = 0) -> None:
         self.max_fit_samples = max_fit_samples
         self.seed = seed
-        self._sigs: dict[int, list[np.ndarray]] = defaultdict(list)
+        self._km: KMeans | None = None
         self.separation_score: float = float("nan")
+
+    @property
+    def fitted(self) -> bool:
+        return self._km is not None
+
+    def fit(self, signatures: list[np.ndarray]) -> "TeamColourModel":
+        X = np.stack(signatures) if signatures else np.zeros((0, 1))
+        if len(X) < 2:
+            return self
+        rng = np.random.default_rng(self.seed)
+        if len(X) > self.max_fit_samples:
+            X = X[rng.choice(len(X), self.max_fit_samples, replace=False)]
+        km = KMeans(n_clusters=2, random_state=self.seed, n_init=25).fit(X)
+        if len(set(km.labels_.tolist())) == 2:
+            self._km = km
+            self.separation_score = float(silhouette_score(X, km.labels_))
+        return self
+
+    def predict(self, sig: np.ndarray | None) -> int:
+        """Team 0/1 for one crop signature, or -1 (no signature / unfitted)."""
+        if sig is None or self._km is None:
+            return -1
+        return int(self._km.predict(sig[None, :])[0])
+
+
+class TeamVoter:
+    """Per-track team vote over the crops of each track (team assignment)."""
+
+    def __init__(self, model: TeamColourModel) -> None:
+        self.model = model
+        self._votes: dict[int, list[int]] = defaultdict(list)
 
     @staticmethod
     def signature(frame: np.ndarray, det: Detection) -> np.ndarray | None:
@@ -85,30 +123,20 @@ class TeamVoter:
         return sig if sig.any() else None
 
     def add(self, track_id: int, sig: np.ndarray | None) -> None:
-        """Record one crop signature for a track (None is ignored)."""
-        if sig is not None:
-            self._sigs[track_id].append(sig)
+        """Record one crop of a track (None is ignored)."""
+        team = self.model.predict(sig)
+        if team >= 0:
+            self._votes[track_id].append(team)
+
+    @property
+    def separation_score(self) -> float:
+        return self.model.separation_score
 
     def assign(self) -> dict[int, tuple[int, float]]:
         """Return ``{track_id: (team, vote_fraction)}`` for voted tracks."""
-        ids = [t for t, s in self._sigs.items() for _ in s]
-        if len(set(ids)) < 2:
-            return {}
-        X = np.stack([s for t in self._sigs for s in self._sigs[t]])
-        ids = np.array(ids)
-        rng = np.random.default_rng(self.seed)
-        fit_idx = (
-            rng.choice(len(X), self.max_fit_samples, replace=False)
-            if len(X) > self.max_fit_samples
-            else np.arange(len(X))
-        )
-        km = KMeans(n_clusters=2, random_state=self.seed, n_init=25).fit(X[fit_idx])
-        labels = km.predict(X)
-        if len(set(km.labels_.tolist())) == 2:
-            self.separation_score = float(silhouette_score(X[fit_idx], km.labels_))
         out: dict[int, tuple[int, float]] = {}
-        for t in self._sigs:
-            votes = labels[ids == t]
-            team = int(np.bincount(votes, minlength=2).argmax())
-            out[t] = (team, float((votes == team).mean()))
+        for t, votes in self._votes.items():
+            v = np.array(votes)
+            team = int(np.bincount(v, minlength=2).argmax())
+            out[t] = (team, float((v == team).mean()))
         return out

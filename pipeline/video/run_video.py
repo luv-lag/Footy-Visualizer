@@ -52,8 +52,13 @@ from video.export import write_camera_csv, write_tracks_csv  # noqa: E402
 from video.minimap import Minimap, annotate_frame, compose  # noqa: E402
 from video.positions import build_rows  # noqa: E402
 from video.reader import iter_frames, video_info  # noqa: E402
-from video.teams import TeamVoter  # noqa: E402
-from video.tracking import PERSON_CLASSES, PlayerTracker, detections_to_xyxy  # noqa: E402
+from video.teams import TeamColourModel, TeamVoter  # noqa: E402
+from video.tracking import (  # noqa: E402
+    PERSON_CLASSES,
+    ColourGatedTracker,
+    PlayerTracker,
+    detections_to_xyxy,
+)
 
 
 def run(
@@ -69,6 +74,7 @@ def run(
     start: int = 0,
     max_frames: int | None = None,
     render: bool = True,
+    colour_gating: bool = True,
 ) -> dict:
     t_start = time.time()
     os.makedirs(out_dir, exist_ok=True)
@@ -80,8 +86,6 @@ def run(
     anchor_fn = pitchcal_anchor if anchor == "pitchcal" else pitchcal_then_pnlcalib_anchor(device)
     camera = CameraTracker(anchor_fn=anchor_fn, refine_every=refine_every,
                            reanchor_every=reanchor_every)
-    players = PlayerTracker(kind=tracker, fps=fps, stride=stride)
-    voter = TeamVoter()
 
     # ---- pass 1: forward -------------------------------------------------
     states: dict[int, CameraState] = {}
@@ -124,11 +128,22 @@ def run(
     t0 = time.time()
     ordered = smooth_states([states[i] for i in sorted(states)])
     states = {s.frame_idx: s for s in ordered}
+    # One colour model, two uses: per-detection colour gating for tracking,
+    # and the per-track team vote.
+    colours = TeamColourModel().fit([s for sigs in signatures.values() for s in sigs if s is not None])
+    voter = TeamVoter(colours)
+    tracker_kw = dict(kind=tracker, fps=fps, stride=stride)
+    players = ColourGatedTracker(**tracker_kw) if colour_gating else PlayerTracker(**tracker_kw)
     tracked = []
     for idx in sorted(detections):
         dets = detections[idx]
         sig_of = {id(d): sig for d, sig in zip(dets, signatures[idx])}
-        for td in players.update(dets, states.get(idx), idx):
+        if colour_gating:
+            groups = [colours.predict(sig_of[id(d)]) for d in dets]
+            tds = players.update(dets, groups, states.get(idx), idx)
+        else:
+            tds = players.update(dets, states.get(idx), idx)
+        for td in tds:
             tracked.append(td)
             voter.add(td.track_id, sig_of[id(td.det)])
     teams = voter.assign()
@@ -151,6 +166,7 @@ def run(
         "detect_stride": stride,
         "detector": detector,
         "tracker": tracker,
+        "colour_gating": colour_gating,
         "anchor": anchor,
         "calibrated_fraction": round(sum(s.ok for s in ordered) / len(ordered), 4),
         "camera_sources": dict(sources),
@@ -210,9 +226,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--start", type=int, default=0)
     p.add_argument("--max-frames", type=int, default=None)
     p.add_argument("--no-render", action="store_true")
+    p.add_argument("--no-colour-gating", action="store_true",
+                   help="associate on position only (kit colour still sets teams)")
     a = p.parse_args(argv)
     summary = run(a.video, a.out, a.detector, a.detect_stride, a.tracker, a.anchor, a.device,
-                  a.refine_every, a.reanchor_every, a.start, a.max_frames, not a.no_render)
+                  a.refine_every, a.reanchor_every, a.start, a.max_frames, not a.no_render,
+                  not a.no_colour_gating)
     print(json.dumps(summary, indent=2, default=float))
 
 

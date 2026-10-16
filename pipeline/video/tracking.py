@@ -146,6 +146,42 @@ class PlayerTracker:
         ]
 
 
+class ColourGatedTracker:
+    """Pitch-space tracking with kit colour as an association gate.
+
+    Each detection carries a colour group (team 0, team 1, or "other" for
+    goalkeepers, referees and unlabelled crops), and every group gets its own
+    :class:`PlayerTracker`.  A track can then only ever continue on a
+    detection of the same kit: the classic swap when two opponents cross in
+    a crowded box becomes impossible.  An isolated mislabelled crop starts
+    an unconfirmed one-frame track in the wrong group, which the tracker
+    drops; longer mislabels leave fragments for :func:`stitch_tracklets`.
+
+    Track ids are offset per group so they stay unique.
+    """
+
+    GROUPS = (0, 1, -1)
+    ID_STRIDE = 100_000
+
+    def __init__(self, **tracker_kwargs) -> None:
+        self._trackers = {g: PlayerTracker(**tracker_kwargs) for g in self.GROUPS}
+
+    def reset(self) -> None:
+        for t in self._trackers.values():
+            t.reset()
+
+    def update(
+        self, dets: list[Detection], groups: list[int], state: CameraState | None, frame_idx: int
+    ) -> list[TrackedDetection]:
+        out: list[TrackedDetection] = []
+        for k, g in enumerate(self.GROUPS):
+            mine = [d for d, gg in zip(dets, groups) if gg == g]
+            for td in self._trackers[g].update(mine, state, frame_idx):
+                td.track_id += k * self.ID_STRIDE
+                out.append(td)
+        return out
+
+
 # ---------------------------------------------------------------------- #
 # Offline stitching (pitch space)
 # ---------------------------------------------------------------------- #
