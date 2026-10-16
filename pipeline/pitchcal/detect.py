@@ -88,10 +88,25 @@ def field_mask(bgr: np.ndarray) -> np.ndarray:
     # Refine around the dominant grass hue; saturation/value floors are
     # kept moderate so dusk / shadowed parts of the pitch stay included
     # (speckle-open + largest-component below reject crowd noise).
-    hue_peak = int(np.bincount(h[green].ravel(), minlength=180).argmax())
-    mask = (
-        (np.abs(h.astype(int) - hue_peak) < 14) & (s > 40) & (v > 32)
-    ).astype(np.uint8) * 255
+    # Hard sunlight splits the grass into two hue modes: sunlit turf is
+    # yellow-green (~35) while turf in shadow is lit by blue skylight and
+    # shifts to blue-green (~75).  Keeping only the dominant mode throws
+    # away every marking in whichever part is smaller, so accept a second
+    # mode when it carries a substantial share of the green pixels.
+    hist = np.bincount(h[green].ravel(), minlength=180).astype(float)
+    hue_peak = int(hist.argmax())
+    peaks = [hue_peak]
+    rest = hist.copy()
+    rest[max(0, hue_peak - 20) : hue_peak + 21] = 0
+    second = int(rest.argmax())
+    lo, hi = max(0, second - 14), second + 15
+    if rest[lo:hi].sum() > 0.2 * hist.sum():
+        peaks.append(second)
+    hi_int = h.astype(int)
+    near_peak = np.zeros(h.shape, bool)
+    for p in peaks:
+        near_peak |= np.abs(hi_int - p) < 14
+    mask = (near_peak & (s > 40) & (v > 32)).astype(np.uint8) * 255
     # Kill isolated speckle (crowd pixels) before any closing can merge it.
     mask = cv2.morphologyEx(
         mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
