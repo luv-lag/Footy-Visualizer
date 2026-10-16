@@ -1,0 +1,304 @@
+<title>Minimap Accuracy Check</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control bar over a two-pane "match analyst" desk (broadcast frame | top-down pitch), timeline beneath, results table last. */
+:root {
+  --bg: #f4f6f3; --panel: #ffffff; --ink: #121512; --ink-2: #4a524a; --ink-3: #7b847a;
+  --line: #d9ded7; --grid: #e8ece6;
+  --turf: #2f6b3d; --turf-2: #34743f; --paint: #eef3ec;
+  --team-a: #2a78d6; --team-b: #eb6834; --neutral: #9aa29a; --gt: #121512;
+  --err: #c2372f; --ok: #1e7a3c; --warn: #a86a00;
+  --cam-anchor: #6250d6; --cam-tracked: #9fb8a4; --cam-backfill: #e8b44a; --cam-lost: #c2372f;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111511; --panel: #1a1f1a; --ink: #eef1ec; --ink-2: #b7bfb5; --ink-3: #848d82;
+  --line: #2e362e; --grid: #252c25; --turf: #24502e; --turf-2: #285833; --paint: #dfe8dc;
+  --team-a: #3987e5; --team-b: #d95926; --neutral: #8a9389; --gt: #f4f7f2;
+  --err: #e66767; --ok: #4cbb6c; --warn: #d9a23a;
+  --cam-anchor: #9085e9; --cam-tracked: #48604d; --cam-backfill: #c9962f; --cam-lost: #e66767;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111511; --panel: #1a1f1a; --ink: #eef1ec; --ink-2: #b7bfb5; --ink-3: #848d82;
+  --line: #2e362e; --grid: #252c25; --turf: #24502e; --turf-2: #285833; --paint: #dfe8dc;
+  --team-a: #3987e5; --team-b: #d95926; --neutral: #8a9389; --gt: #f4f7f2;
+  --err: #e66767; --ok: #4cbb6c; --warn: #d9a23a;
+  --cam-anchor: #9085e9; --cam-tracked: #48604d; --cam-backfill: #c9962f; --cam-lost: #e66767;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+.wrap > * { min-width: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+h1 { font: 700 clamp(30px, 4.4vw, 46px)/1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; text-transform: uppercase; }
+.lede { color: var(--ink-2); max-width: 70ch; margin: 0; }
+h2 { font: 600 22px/1.1 var(--display); text-transform: uppercase; letter-spacing: .03em; margin: 0; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { font: 500 13px var(--body); border: 0; background: transparent; color: var(--ink-2); padding: 7px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:focus-visible, .play:focus-visible, #scrub:focus-visible { outline: 2px solid var(--team-a); outline-offset: 2px; }
+.ctl-label { font: 500 12px var(--mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; margin-right: 8px; }
+
+.desk { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .desk { grid-template-columns: minmax(0, 1fr); } }
+.pane { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.pane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pane-title { font: 600 15px var(--display); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); }
+.clock { font: 500 13px var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+#thumb { width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 6px; display: block; background: var(--grid); object-fit: cover; }
+canvas#pitch { width: 100%; aspect-ratio: 113 / 76; max-width: 100%; display: block; border-radius: 6px; }
+
+.now { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.now div { border-top: 2px solid var(--line); padding-top: 6px; }
+.now dt { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.now dd { margin: 0; font: 600 24px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.now dd small { font: 400 12px var(--body); color: var(--ink-3); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.sw.ring { background: transparent; border: 2px solid var(--gt); }
+.sw.bar { border-radius: 2px; width: 14px; height: 8px; }
+
+.timeline { display: grid; gap: 8px; }
+.tl-row { display: flex; align-items: center; gap: 12px; }
+.play { font: 600 13px var(--body); border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 7px 14px; cursor: pointer; min-width: 78px; }
+svg#chart { width: 100%; height: auto; display: block; touch-action: none; cursor: crosshair; }
+#chart text { fill: var(--ink-3); font: 11px var(--mono); }
+.tip { font: 12px var(--mono); color: var(--ink-2); min-height: 18px; font-variant-numeric: tabular-nums; }
+
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+thead th { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); background: var(--panel); position: sticky; top: 0; }
+tbody tr.tuned td { font-weight: 600; }
+tbody tr.sel { background: color-mix(in oklab, var(--team-a) 9%, transparent); }
+td.good { color: var(--ok); } td.bad { color: var(--err); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.notes section { min-width: 0; }
+.notes h3 { font: 600 16px var(--display); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; }
+.notes p, .notes li { color: var(--ink-2); margin: 0; max-width: 62ch; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+footer { font-size: 12px; color: var(--ink-3); }
+footer a { color: inherit; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Footy Visualizer · video pipeline · SoccerNet GSR validation</div>
+    <h1>Minimap Accuracy Check</h1>
+    <p class="lede">Two real 30-second broadcast clips run through the video pipeline and scored against SoccerNet's ground-truth pitch positions. Filled dots are the pipeline's players; rings are where they really were; red lines show the error. Drag across the timeline or press play.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="View controls">
+    <div><span class="ctl-label">Clip</span><span class="seg" id="seg-clip"></span></div>
+    <div><span class="ctl-label">Detections</span><span class="seg" id="seg-run"></span></div>
+  </div>
+
+  <div class="desk">
+    <div class="pane">
+      <div class="pane-head"><span class="pane-title">Broadcast</span><span class="clock" id="clock"></span></div>
+      <img id="thumb" alt="Broadcast frame at the current time">
+      <dl class="now">
+        <div><dt>Median error</dt><dd id="now-err">–</dd></div>
+        <div><dt>Players found</dt><dd id="now-rec">–</dd></div>
+        <div><dt>Camera</dt><dd id="now-cam">–</dd></div>
+      </dl>
+    </div>
+    <div class="pane">
+      <div class="pane-head"><span class="pane-title">Top-down pitch · metres</span><span class="clock" id="counts"></span></div>
+      <canvas id="pitch" width="1130" height="760" aria-label="Top-down pitch with predicted and ground-truth player positions"></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--team-a)"></i>Team A</span>
+        <span><i class="sw" style="background:var(--team-b)"></i>Team B</span>
+        <span><i class="sw" style="background:var(--neutral)"></i>No team (keeper, referee)</span>
+        <span><i class="sw ring"></i>Ground truth</span>
+        <span><i class="sw bar" style="background:var(--err)"></i>Error</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane timeline">
+    <div class="pane-head"><span class="pane-title">Median position error per frame</span><span class="tip" id="tip"></span></div>
+    <div class="tl-row"><button class="play" id="play" type="button">Play</button><span class="clock">The strip under the chart shows how the camera was solved in each frame.</span></div>
+    <svg id="chart" viewBox="0 0 1000 210" role="img" aria-label="Line chart of median error in metres over the clip, with a camera-source strip"></svg>
+    <div class="legend" id="cam-legend"></div>
+  </div>
+
+  <div class="results">
+    <h2 style="margin-bottom:10px">Results, before and after tuning</h2>
+    <div class="tablewrap"><table id="tbl"></table></div>
+  </div>
+
+  <div class="notes" id="notes"></div>
+
+  <footer>Data: <a href="https://huggingface.co/datasets/SoccerNet/SN-GSR-2025" target="_blank" rel="noopener">SoccerNet GSR 2025</a> validation clips (GPL-3.0). Errors are distances on a 105 × 68 m pitch after per-frame matching within 5 m. Generated <span id="gen"></span>.</footer>
+</div>
+
+<script>
+const DATA = /*DATA*/null;
+const THUMBS = /*THUMBS*/null;
+
+const L = 105, W = 68, M = 4;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CAM_GROUP = { anchor: "anchor", refined: "tracked", flow: "tracked", backfill: "backfill", lost: "lost" };
+const camKey = c => CAM_GROUP[(c || "none").split(":")[0]] || "lost";
+const CAM_LABEL = { anchor: "Full calibration", tracked: "Tracked (flow + markings)", backfill: "Back-filled", lost: "Lost" };
+
+let clip = Object.keys(DATA.clips)[0], run = "rfdetr", frameIdx = 0, playing = false, timer = null;
+
+function seg(el, items, get, set) {
+  el.innerHTML = "";
+  for (const [k, label] of items) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = label;
+    b.setAttribute("aria-pressed", String(get() === k));
+    b.onclick = () => { set(k); for (const x of el.children) x.setAttribute("aria-pressed", String(x === b)); };
+    el.appendChild(b);
+  }
+}
+const cur = () => DATA.clips[clip].runs[run];
+
+function drawPitch() {
+  const cv = document.getElementById("pitch"), ctx = cv.getContext("2d");
+  const s = cv.width / (L + 2 * M);
+  const X = x => (x + M) * s, Y = y => (W + M - y) * s;
+  ctx.fillStyle = css("--turf"); ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = css("--turf-2");
+  for (let i = 0; i < 20; i += 2) ctx.fillRect(X(i * 5.25), Y(W), 5.25 * s, W * s);
+  ctx.strokeStyle = css("--paint"); ctx.globalAlpha = .75; ctx.lineWidth = 2;
+  const rect = (x0, y0, x1, y1) => ctx.strokeRect(X(x0), Y(y1), (x1 - x0) * s, (y1 - y0) * s);
+  rect(0, 0, L, W); ctx.beginPath(); ctx.moveTo(X(L / 2), Y(0)); ctx.lineTo(X(L / 2), Y(W)); ctx.stroke();
+  ctx.beginPath(); ctx.arc(X(L / 2), Y(W / 2), 9.15 * s, 0, 2 * Math.PI); ctx.stroke();
+  for (const [a, b] of [[0, 16.5], [L - 16.5, L]]) rect(a, W / 2 - 20.16, b, W / 2 + 20.16);
+  for (const [a, b] of [[0, 5.5], [L - 5.5, L]]) rect(a, W / 2 - 9.16, b, W / 2 + 9.16);
+  ctx.globalAlpha = 1;
+
+  const r = cur(), fr = r.frames[frameIdx]; if (!fr) return;
+  const teamCol = t => t === 0 ? css("--team-a") : t === 1 ? css("--team-b") : css("--neutral");
+  ctx.strokeStyle = css("--err"); ctx.lineWidth = 2.5;
+  for (const [i, j] of fr.m) { const p = fr.p[i], g = fr.g[j]; ctx.beginPath(); ctx.moveTo(X(p[0]), Y(p[1])); ctx.lineTo(X(g[0]), Y(g[1])); ctx.stroke(); }
+  ctx.lineWidth = 2;
+  for (const g of fr.g) { ctx.strokeStyle = css("--gt"); ctx.beginPath(); ctx.arc(X(g[0]), Y(g[1]), 7, 0, 2 * Math.PI); ctx.stroke(); }
+  ctx.font = "500 15px " + css("--mono");
+  for (const p of fr.p) {
+    ctx.fillStyle = teamCol(p[3]); ctx.strokeStyle = css("--turf");
+    ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 6.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = css("--paint"); ctx.fillText(String(p[2]), X(p[0]) + 9, Y(p[1]) - 7);
+  }
+  document.getElementById("counts").textContent = `${fr.p.length} tracked · ${fr.g.length} in ground truth`;
+}
+
+function drawChart() {
+  const svg = document.getElementById("chart"), r = cur(), S = r.series, n = S.length;
+  const x0 = 44, x1 = 990, y0 = 12, y1 = 160, ymax = 4;
+  const X = f => x0 + (x1 - x0) * f / (n - 1), Y = e => y1 - (y1 - y0) * Math.min(e, ymax) / ymax;
+  let h = "";
+  for (let e = 0; e <= ymax; e++) h += `<line x1="${x0}" x2="${x1}" y1="${Y(e)}" y2="${Y(e)}" stroke="${css("--grid")}" stroke-width="1"/><text x="${x0 - 8}" y="${Y(e) + 4}" text-anchor="end">${e} m</text>`;
+  for (let t = 0; t <= 30; t += 5) { const f = Math.min(n - 1, t * 25); h += `<text x="${X(f)}" y="204" text-anchor="middle">${t}s</text>`; }
+  let d = "", pen = false;
+  for (const p of S) { if (p.err == null) { pen = false; continue; } d += (pen ? "L" : "M") + X(p.f).toFixed(1) + "," + Y(p.err).toFixed(1); pen = true; }
+  h += `<path d="${d}" fill="none" stroke="${css("--ink")}" stroke-width="2" stroke-linejoin="round"/>`;
+  // camera strip
+  let start = 0;
+  for (let i = 1; i <= n; i++) {
+    if (i === n || camKey(S[i].cam) !== camKey(S[start].cam)) {
+      const k = camKey(S[start].cam);
+      const wpx = Math.max(k === "anchor" ? 3 : 1, X(i - 1) - X(start) + (x1 - x0) / n);
+      h += `<rect x="${X(start)}" y="170" width="${wpx}" height="14" fill="${css("--cam-" + k) || css("--neutral")}"/>`;
+      start = i;
+    }
+  }
+  const pf = r.frames[frameIdx].f;
+  h += `<line id="cursor" x1="${X(pf)}" x2="${X(pf)}" y1="${y0}" y2="186" stroke="${css("--err")}" stroke-width="2"/>`;
+  svg.innerHTML = h;
+  svg.dataset.n = n;
+}
+
+function update() {
+  const r = cur(), fr = r.frames[frameIdx], s = r.series[fr.f];
+  const t = fr.f / 25;
+  document.getElementById("clock").textContent = `${t.toFixed(1)} s · frame ${fr.f}`;
+  document.getElementById("now-err").innerHTML = s.err == null ? "–" : `${s.err.toFixed(2)}<small> m</small>`;
+  document.getElementById("now-rec").innerHTML = s.recall == null ? "–" : `${Math.round(s.recall * 100)}<small> %</small>`;
+  document.getElementById("now-cam").innerHTML = `<small style="font-size:14px">${CAM_LABEL[camKey(s.cam)] || s.cam}</small>`;
+  const th = THUMBS[clip]; document.getElementById("thumb").src = "data:image/jpeg;base64," + th[Math.min(th.length - 1, Math.round(fr.f / 25))];
+  drawPitch();
+  const c = document.getElementById("cursor");
+  if (c) { const n = r.series.length, X = f => 44 + (990 - 44) * f / (n - 1); c.setAttribute("x1", X(fr.f)); c.setAttribute("x2", X(fr.f)); }
+}
+
+function frameAt(ev) {
+  const box = document.getElementById("chart").getBoundingClientRect();
+  const vx = (ev.clientX - box.left) / box.width * 1000, n = cur().series.length;
+  return Math.max(0, Math.min(n - 1, Math.round((vx - 44) / (990 - 44) * (n - 1))));
+}
+function showTip(f) {
+  const s = cur().series[f];
+  document.getElementById("tip").textContent = `${(f / 25).toFixed(1)} s · ${s.err == null ? "no matches" : s.err.toFixed(2) + " m"} · ${CAM_LABEL[camKey(s.cam)]}`;
+}
+function seekFromEvent(ev) {
+  const f = frameAt(ev);
+  frameIdx = Math.min(cur().frames.length - 1, Math.round(f / cur().every));
+  showTip(f); update();
+}
+
+function table() {
+  const cols = [["calibrated_frames", "Calibrated", v => pct(v), 1], ["loc_err_m.median", "Median err", v => m(v), -1], ["loc_err_m.p90", "p90 err", v => m(v), -1],
+    ["recall", "Recall", v => pct(v), 1], ["precision", "Precision", v => pct(v), 1], ["idf1", "IDF1", v => v == null ? "–" : v.toFixed(2), 1],
+    ["id_switches", "ID switches", v => v, -1], ["team_acc", "Team acc.", v => pct(v), 1]];
+  const pct = v => v == null ? "–" : (v * 100).toFixed(1) + "%", m = v => v == null ? "–" : v.toFixed(2) + " m";
+  const get = (o, k) => k.split(".").reduce((a, b) => a == null ? a : a[b], o);
+  let h = "<thead><tr><th>Clip</th><th>Detections · version</th>" + cols.map(c => `<th>${c[1]}</th>`).join("") + "</tr></thead><tbody>";
+  for (const [ck, c] of Object.entries(DATA.clips)) for (const [rk, rr] of Object.entries(c.runs)) {
+    const base = rr.baseline, tuned = rr.metrics;
+    for (const [lab, mm, cls] of [["baseline", base, ""], ["tuned", tuned, "tuned"]]) {
+      if (!mm) continue;
+      const sel = ck === clip && rk === run ? " sel" : "";
+      h += `<tr class="${cls}${sel}"><td>${c.label}</td><td>${DATA.runLabels[rk]} · ${lab}</td>` + cols.map(([k, , f, dir]) => {
+        const v = get(mm, k), b = base ? get(base, k) : null;
+        let cl = ""; if (cls && b != null && v != null && v !== b) cl = (v - b) * dir > 0 ? "good" : "bad";
+        return `<td class="${cl}">${f(v)}</td>`; }).join("") + "</tr>";
+    }
+  }
+  document.getElementById("tbl").innerHTML = h + "</tbody>";
+}
+
+const startIdx = () => Math.round(250 / cur().every);  // open 10 s in, once tracks have formed
+function setClip(k) { clip = k; frameIdx = startIdx(); drawChart(); update(); table(); }
+function setRun(k) { run = k; frameIdx = Math.min(frameIdx, cur().frames.length - 1); drawChart(); update(); table(); }
+
+function boot() {
+  if (!DATA.clips[clip].runs[run]) run = Object.keys(DATA.clips[clip].runs)[0];
+  seg(document.getElementById("seg-clip"), Object.entries(DATA.clips).map(([k, c]) => [k, c.label]), () => clip, setClip);
+  seg(document.getElementById("seg-run"), Object.keys(DATA.clips[clip].runs).map(k => [k, DATA.runLabels[k]]), () => run, setRun);
+  document.getElementById("cam-legend").innerHTML = ["anchor", "tracked", "backfill", "lost"].map(k => `<span><i class="sw bar" style="background:var(--cam-${k})"></i>${CAM_LABEL[k]}</span>`).join("");
+  document.getElementById("notes").innerHTML = DATA.notes.map(n => `<section><h3>${n.h}</h3>${n.body}</section>`).join("");
+  document.getElementById("gen").textContent = DATA.generated;
+  const svg = document.getElementById("chart"); let drag = false;
+  svg.addEventListener("pointerdown", e => { drag = true; svg.setPointerCapture(e.pointerId); seekFromEvent(e); });
+  svg.addEventListener("pointermove", e => { if (drag) seekFromEvent(e); else showTip(frameAt(e)); });
+  svg.addEventListener("pointerup", () => drag = false);
+  document.getElementById("play").onclick = () => {
+    playing = !playing; document.getElementById("play").textContent = playing ? "Pause" : "Play";
+    clearInterval(timer);
+    if (playing) timer = setInterval(() => { frameIdx = (frameIdx + 1) % cur().frames.length; update(); }, 1000 / (25 / cur().every));
+  };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawChart(); update(); });
+  new MutationObserver(() => { drawChart(); update(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  frameIdx = startIdx();
+  drawChart(); update(); table();
+}
+boot();
+</script>

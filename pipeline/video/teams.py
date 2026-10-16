@@ -5,6 +5,20 @@ so team labels can flicker frame to frame (and cluster ids can swap between
 frames).  For video, ``team_id_v2``'s colour signatures are pooled across
 the whole clip, clustered ONCE (so team 0 / team 1 mean the same thing in
 every frame), and each track takes the majority vote of its own crops.
+
+Shadows: ``team_id_v2``'s signature keeps brightness information (dark /
+light hue bands, lightness bins), so on a pitch half in hard shadow it
+clusters "sunlit vs shaded" instead of "team A vs team B" -- 50 % purity on
+SoccerNet GSR clip SNGS-048.  :func:`robust_signature` concatenates two
+illumination-tolerant views of the same crop:
+
+* the v2 signature with brightness collapsed (hue mass + one achromatic
+  bin), and
+* the v2 signature of the crop after gray-world white balance and
+  brightness normalisation (removes the shade's colour cast and darkening).
+
+Measured on two GSR clips (per crop / per track vote): SNGS-048 50 % / 55 %
+-> 97 % / 100 %; SNGS-082 99 % / 100 % -> 99 % / 100 %.
 """
 
 from __future__ import annotations
@@ -16,7 +30,38 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 from detection import Detection
-from team_id_v2 import MIN_DETECTION_CONFIDENCE, compute_signature, extract_torso_crop
+import cv2
+
+from team_id_v2 import (
+    MIN_DETECTION_CONFIDENCE,
+    SIGNATURE_HUE_BINS,
+    compute_signature,
+    extract_torso_crop,
+)
+
+
+def _hue_mass(sig: np.ndarray) -> np.ndarray:
+    """v2 signature with dark/light bands merged and lightness collapsed."""
+    p = sig**2  # undo the Hellinger mapping
+    hue = p[: 2 * SIGNATURE_HUE_BINS].reshape(-1, 2).sum(axis=1)
+    v = np.append(hue, p[2 * SIGNATURE_HUE_BINS :].sum())
+    total = v.sum()
+    return np.sqrt(v / total) if total > 0 else v
+
+
+def _balanced(crop: np.ndarray) -> np.ndarray:
+    """Gray-world white balance, then scale brightness to a fixed level."""
+    f = crop.astype(np.float64)
+    mean = f.reshape(-1, 3).mean(axis=0) + 1e-6
+    f = np.clip(f * (mean.mean() / mean), 0, 255).astype(np.uint8)
+    hsv = cv2.cvtColor(f, cv2.COLOR_BGR2HSV).astype(np.float64)
+    hsv[..., 2] = np.clip(hsv[..., 2] * (200.0 / (np.percentile(hsv[..., 2], 90) + 1e-6)), 0, 255)
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+
+def robust_signature(crop: np.ndarray) -> np.ndarray:
+    """Illumination-tolerant team signature (see module docstring)."""
+    return np.concatenate([_hue_mass(compute_signature(crop)), compute_signature(_balanced(crop))])
 
 
 class TeamVoter:
@@ -34,7 +79,7 @@ class TeamVoter:
         if det.class_name != "player" or det.confidence < MIN_DETECTION_CONFIDENCE:
             return None
         try:
-            sig = compute_signature(extract_torso_crop(frame, det))
+            sig = robust_signature(extract_torso_crop(frame, det))
         except ValueError:
             return None
         return sig if sig.any() else None

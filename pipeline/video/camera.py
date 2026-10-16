@@ -143,7 +143,6 @@ class CameraTracker:
         max_fit: float = 0.40,
         min_explained: float = 0.35,
         min_flow_inliers: int = 25,
-        max_anchor_jump_m: float = 4.0,
         max_backfill: int = 250,
     ) -> None:
         """
@@ -152,15 +151,13 @@ class CameraTracker:
             pitch: pitch template (defaults to FIFA 105 x 68).
             refine_every: frames between marking-based refinements (1 =
                 every frame; each costs ~0.3 s on CPU at 720p).
-            reanchor_every: frames between unconditional re-anchors (0 =
-                only when refinement reports drift).
+            reanchor_every: frames between periodic re-anchors (0 = only
+                when lost).  A re-anchor replaces the tracked H only if it
+                explains the frame's pitch markings better.
             anchor_retry_every: while lost, frames between anchor attempts.
             max_fit / min_explained: health gates on a refined H, same
                 semantics as pitchcal's acceptance thresholds.
             min_flow_inliers: RANSAC inliers needed to trust a flow step.
-            max_anchor_jump_m: a re-anchor that disagrees with a *healthy*
-                tracked H by more than this is treated as the anchor being
-                wrong, not the tracker.
             max_backfill: how many un-anchored frames to remember so that,
                 once an anchor succeeds, flow can be run *backwards* to
                 recover them (see :meth:`pop_backfilled`).  0 disables it.
@@ -173,7 +170,6 @@ class CameraTracker:
         self.max_fit = max_fit
         self.min_explained = min_explained
         self.min_flow_inliers = min_flow_inliers
-        self.max_anchor_jump_m = max_anchor_jump_m
         self.max_backfill = max_backfill
         self.reset()
 
@@ -309,8 +305,14 @@ class CameraTracker:
                 H_new, d = twin, d_twin
                 diag["anchor_flipped_for_continuity"] = True
             diag["anchor_jump_m"] = round(float(d), 3)
-            if d > self.max_anchor_jump_m:
-                diag["anchor"] = "rejected: disagrees with healthy track"
+            # Let this frame's markings decide: neither a fresh single-frame
+            # anchor (occasionally ~1 m off) nor a long-tracked H (slow drift
+            # that refinement can lock onto) is trusted by default.
+            s_track, s_new = self._marking_scores(frame, boxes, [(self.H, self.dm), (H_new, dm_new)])
+            diag["anchor_scores"] = {"track": round(s_track, 4), "anchor": round(s_new, 4)}
+            if not s_new < s_track:
+                self._since_anchor = 0
+                diag["anchor"] = "kept track: fits this frame's markings better"
                 return False
         self.H, self.dm = H_new, dm_new
         self._since_anchor = 0
@@ -318,6 +320,18 @@ class CameraTracker:
         diag["anchor"] = "ok"
         diag["anchor_source"] = f"anchor:{name}"
         return True
+
+    def _marking_scores(self, frame, boxes, cams) -> list[float]:
+        """pitchcal's candidate score (fit + unexplained paint) per (H, dm)."""
+        features = detect_features(frame, player_boxes=boxes)
+        scorer = Scorer(features, self.pitch)
+        out = []
+        for H, dm in cams:
+            if dm is not None and abs(features.dm.lam - dm.lam) > 1e-6:
+                H = _rebase_distortion(H, dm, features.dm, features.image_size)
+            fit, _ = scorer.fit(H)
+            out.append(float(fit + 0.6 * (1.0 - scorer.explained(H))) if np.isfinite(fit) else float("inf"))
+        return out
 
     def _refine(self, frame, boxes) -> tuple[bool, float, float]:
         features = detect_features(frame, player_boxes=boxes)

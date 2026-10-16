@@ -65,6 +65,7 @@ def run(
     anchor: str = "pitchcal",
     device: str = "cuda:0",
     refine_every: int = 5,
+    reanchor_every: int = 50,
     start: int = 0,
     max_frames: int | None = None,
     render: bool = True,
@@ -77,7 +78,8 @@ def run(
 
     det = CachedDetector(make_detector(detector), os.path.join(out_dir, "detections.json"))
     anchor_fn = pitchcal_anchor if anchor == "pitchcal" else pitchcal_then_pnlcalib_anchor(device)
-    camera = CameraTracker(anchor_fn=anchor_fn, refine_every=refine_every)
+    camera = CameraTracker(anchor_fn=anchor_fn, refine_every=refine_every,
+                           reanchor_every=reanchor_every)
     players = PlayerTracker(kind=tracker, fps=fps, stride=stride)
     voter = TeamVoter()
 
@@ -193,7 +195,7 @@ def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("video")
     p.add_argument("--out", required=True, help="output directory")
-    p.add_argument("--detector", default="hosted", choices=["hosted", "local", "none"],
+    p.add_argument("--detector", default="hosted", choices=["hosted", "local", "rfdetr", "none"],
                    help="'none' = use the detection cache only")
     p.add_argument("--detect-stride", type=int, default=3,
                    help="detect every N-th frame (positions are interpolated between)")
@@ -203,12 +205,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--anchor", default="pitchcal", choices=["pitchcal", "pitchcal+pnlcalib"])
     p.add_argument("--device", default="cuda:0", help="PnLCalib device for --anchor pitchcal+pnlcalib")
     p.add_argument("--refine-every", type=int, default=5)
+    p.add_argument("--reanchor-every", type=int, default=50,
+                   help="frames between fresh full calibrations (0 = only when lost)")
     p.add_argument("--start", type=int, default=0)
     p.add_argument("--max-frames", type=int, default=None)
     p.add_argument("--no-render", action="store_true")
     a = p.parse_args(argv)
     summary = run(a.video, a.out, a.detector, a.detect_stride, a.tracker, a.anchor, a.device,
-                  a.refine_every, a.start, a.max_frames, not a.no_render)
+                  a.refine_every, a.reanchor_every, a.start, a.max_frames, not a.no_render)
     print(json.dumps(summary, indent=2, default=float))
 
 

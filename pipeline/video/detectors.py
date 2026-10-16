@@ -12,6 +12,8 @@ Backends:
 * :class:`RoboflowLocalDetector` -- the *same* model run locally through
   Roboflow's ``inference`` package (CPU or GPU; weights are downloaded once
   with the API key).  Optional dependency, imported lazily.
+* :class:`RFDETRDetector` -- RF-DETR's COCO checkpoint; needs no API key,
+  but only knows "person" (no goalkeeper / referee split).
 
 :class:`CachedDetector` wraps any backend with a per-video JSON cache keyed
 by frame index, so re-running the pipeline (tuning tracking / rendering)
@@ -77,6 +79,50 @@ class RoboflowLocalDetector:
         ]
 
 
+class RFDETRDetector:
+    """RF-DETR (Apache-2.0) pretrained on COCO, run locally (CPU or GPU).
+
+    COCO has no football classes: "person" becomes "player" (goalkeepers
+    and referees are not told apart) and "sports ball" becomes "ball".
+    Install with ``pip install rfdetr``.
+
+    Args:
+        size: "nano", "small", "medium" or "base".
+        confidence: detection threshold.
+        resolution: optional inference resolution override (multiple of 32);
+            broadcast players are small, so higher helps recall at a CPU cost.
+    """
+
+    name = "rfdetr"
+    _COCO_PERSON, _COCO_BALL = 1, 37  # COCO category ids used by rfdetr
+
+    def __init__(self, size: str = "medium", confidence: float = 0.35,
+                 resolution: int | None = None) -> None:
+        try:
+            import rfdetr  # noqa: PLC0415
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise RuntimeError("RFDETRDetector needs the `rfdetr` package") from exc
+        cls = {"nano": rfdetr.RFDETRNano, "small": rfdetr.RFDETRSmall,
+               "medium": rfdetr.RFDETRMedium, "base": rfdetr.RFDETRBase}[size]
+        self.model = cls(resolution=resolution) if resolution else cls()
+        self.confidence = confidence
+
+    def __call__(self, frame: np.ndarray) -> list[Detection]:
+        det = self.model.predict(frame[:, :, ::-1].copy(), threshold=self.confidence)  # BGR->RGB
+        out = []
+        for (x0, y0, x1, y1), conf, cid in zip(det.xyxy, det.confidence, det.class_id):
+            if cid == self._COCO_PERSON:
+                name = "player"
+            elif cid == self._COCO_BALL:
+                name = "ball"
+            else:
+                continue
+            w, h = float(x1 - x0), float(y1 - y0)
+            cx, cy = float(x0 + w / 2), float(y0 + h / 2)
+            out.append(Detection(name, float(conf), (cx, cy), (w, h), (cx, cy + h / 2)))
+        return out
+
+
 class CachedDetector:
     """Per-video detection cache (JSON, keyed by frame index).
 
@@ -125,11 +171,13 @@ class CachedDetector:
 
 
 def make_detector(name: str) -> DetectFn | None:
-    """Build a backend by CLI name ("hosted", "local", or "none")."""
+    """Build a backend by CLI name ("hosted", "local", "rfdetr", or "none")."""
     if name == "hosted":
         return RoboflowHostedDetector()
     if name == "local":
         return RoboflowLocalDetector()
+    if name == "rfdetr":
+        return RFDETRDetector()
     if name == "none":
         return None
     raise ValueError(f"unknown detector {name!r} (expected hosted, local or none)")
