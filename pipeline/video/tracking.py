@@ -146,40 +146,57 @@ class PlayerTracker:
         ]
 
 
-class ColourGatedTracker:
-    """Pitch-space tracking with kit colour as an association gate.
+def split_on_colour_change(
+    tracked: list[TrackedDetection],
+    colour_of: dict[int, int],
+    window: int = 9,
+    id_offset: int = 1_000_000,
+) -> tuple[list[TrackedDetection], int]:
+    """Split tracks where their kit colour *persistently* changes.
 
-    Each detection carries a colour group (team 0, team 1, or "other" for
-    goalkeepers, referees and unlabelled crops), and every group gets its own
-    :class:`PlayerTracker`.  A track can then only ever continue on a
-    detection of the same kit: the classic swap when two opponents cross in
-    a crowded box becomes impossible.  An isolated mislabelled crop starts
-    an unconfirmed one-frame track in the wrong group, which the tracker
-    drops; longer mislabels leave fragments for :func:`stitch_tracklets`.
+    Kit colour as a tracking cue, applied with hysteresis: per-crop labels
+    are noisy (a crop overlapping an opponent reads as the other kit), so a
+    track's label sequence is smoothed with a centred majority window, and
+    the track is cut only where the smoothed label flips between team 0 and
+    team 1 -- i.e. where the tracker really jumped to an opponent.  Pieces
+    get fresh ids; :func:`stitch_tracklets` (team-aware) re-links them.
 
-    Track ids are offset per group so they stay unique.
+    Args:
+        tracked: tracked detections (any order).
+        colour_of: ``id(detection) -> team`` (0/1, or -1 for no reading).
+        window: smoothing window in detections (odd).
+
+    Returns:
+        (tracked with split ids, number of splits made).
     """
-
-    GROUPS = (0, 1, -1)
-    ID_STRIDE = 100_000
-
-    def __init__(self, **tracker_kwargs) -> None:
-        self._trackers = {g: PlayerTracker(**tracker_kwargs) for g in self.GROUPS}
-
-    def reset(self) -> None:
-        for t in self._trackers.values():
-            t.reset()
-
-    def update(
-        self, dets: list[Detection], groups: list[int], state: CameraState | None, frame_idx: int
-    ) -> list[TrackedDetection]:
-        out: list[TrackedDetection] = []
-        for k, g in enumerate(self.GROUPS):
-            mine = [d for d, gg in zip(dets, groups) if gg == g]
-            for td in self._trackers[g].update(mine, state, frame_idx):
-                td.track_id += k * self.ID_STRIDE
-                out.append(td)
-        return out
+    by_track: dict[int, list[TrackedDetection]] = {}
+    for td in tracked:
+        by_track.setdefault(td.track_id, []).append(td)
+    next_id = id_offset
+    splits = 0
+    half = window // 2
+    for tid, items in by_track.items():
+        items.sort(key=lambda t: t.frame_idx)
+        lab = np.array([colour_of.get(id(t.det), -1) for t in items])
+        smooth = np.full(len(lab), -1)
+        for k in range(len(lab)):
+            w = lab[max(0, k - half) : k + half + 1]
+            w = w[w >= 0]
+            if len(w):
+                c = np.bincount(w, minlength=2)
+                if c[0] != c[1]:
+                    smooth[k] = int(c.argmax())
+        current = -1
+        new_id = tid
+        for t, s in zip(items, smooth):
+            if s >= 0 and current >= 0 and s != current:
+                new_id = next_id
+                next_id += 1
+                splits += 1
+            if s >= 0:
+                current = s
+            t.track_id = new_id
+    return tracked, splits
 
 
 # ---------------------------------------------------------------------- #

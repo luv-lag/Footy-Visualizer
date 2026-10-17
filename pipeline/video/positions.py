@@ -62,7 +62,7 @@ def build_rows(
     teams: dict[int, tuple[int, float]],
     fps: float,
     stride: int = 1,
-    off_pitch_margin_m: float = 4.0,
+    off_pitch_margin_m: float = 2.0,
     max_interp_gap_s: float = 1.0,
     smooth_s: float = 0.4,
     max_speed_mps: float = 12.0,
@@ -176,6 +176,16 @@ def build_rows(
                                 float("nan"), "detected", det.confidence, st.source,
                                 "ground_plane_assumed"))
 
+    # Renumber tracks 1..N in order of first appearance: raw ids carry the
+    # tracker's / colour-splitter's internal offsets and are not meant for
+    # display.  (-1 stays the ball.)
+    first: dict[int, int] = {}
+    for r in sorted(rows, key=lambda r: r.frame):
+        if r.track_id >= 0 and r.track_id not in first:
+            first[r.track_id] = len(first) + 1
+    for r in rows:
+        if r.track_id >= 0:
+            r.track_id = first[r.track_id]
     rows.sort(key=lambda r: (r.frame, r.track_id))
     return rows, dict(stats)
 

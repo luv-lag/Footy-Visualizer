@@ -5,14 +5,15 @@
 spec.json:
     {
       "clips": {"SNGS-048": {"label": "SNGS-048 · kick-off, hard shadow",
-                             "runs": {"oracle": {"baseline": "<run dir>", "tuned": "<run dir>"},
+                             "runs": {"oracle": {"viz": "<run dir>",
+                                                 "versions": [["original", "<run dir>"], ...]},
                                       "rfdetr": {...}}}},
       "thumbs": "<thumbs.json: {clip: [base64 jpeg per second]}>",
       "notes": [{"h": "...", "body": "<p>...</p>"}]
     }
 
-Each run dir must hold ``metrics.json`` (and the tuned one ``viz.json``) from
-``evaluate.py score --viz``.  Everything is inlined into one HTML file.
+Each run dir must hold ``metrics.json`` from ``evaluate.py score``; the
+``viz`` dir (the version shown on the pitch) also needs ``viz.json`` (``--viz``).  Everything is inlined into one HTML file.
 """
 
 from __future__ import annotations
@@ -34,13 +35,13 @@ def main() -> None:
     for ck, c in spec["clips"].items():
         runs = {}
         for rk, r in c["runs"].items():
-            with open(os.path.join(r["tuned"], "viz.json")) as f:
+            with open(os.path.join(r["viz"], "viz.json")) as f:
                 viz = json.load(f)
-            base = None
-            if r.get("baseline"):
-                with open(os.path.join(r["baseline"], "metrics.json")) as f:
-                    base = json.load(f)
-            runs[rk] = {"metrics": viz["metrics"], "baseline": base, "series": viz["series"],
+            versions = []
+            for label, d in r["versions"]:
+                with open(os.path.join(d, "metrics.json")) as f:
+                    versions.append({"label": label, "metrics": json.load(f)})
+            runs[rk] = {"metrics": viz["metrics"], "versions": versions, "series": viz["series"],
                         "frames": viz["frames"], "every": viz["every"]}
         clips[ck] = {"label": c["label"], "runs": runs}
     data = {"clips": clips, "runLabels": RUN_LABELS, "notes": spec.get("notes", []),

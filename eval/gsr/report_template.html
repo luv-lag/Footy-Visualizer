@@ -99,7 +99,7 @@ footer a { color: inherit; }
   <header>
     <div class="eyebrow">Footy Visualizer · video pipeline · SoccerNet GSR validation</div>
     <h1>Minimap Accuracy Check</h1>
-    <p class="lede">Two real 30-second broadcast clips run through the video pipeline and scored against SoccerNet's ground-truth pitch positions. Filled dots are the pipeline's players; rings are where they really were; red lines show the error. Drag across the timeline or press play.</p>
+    <p class="lede">Three real 30-second broadcast clips run through the video pipeline and scored against SoccerNet's ground-truth pitch positions. Filled dots are the pipeline's players; rings are where they really were; red lines show the error. Drag across the timeline or press play.</p>
   </header>
 
   <div class="controls" role="group" aria-label="View controls">
@@ -138,7 +138,8 @@ footer a { color: inherit; }
   </div>
 
   <div class="results">
-    <h2 style="margin-bottom:10px">Results, before and after tuning</h2>
+    <h2 style="margin-bottom:6px">Results, step by step</h2>
+    <p class="lede" style="margin-bottom:10px">Each row adds one fix; green and red compare against that block's first row. SNGS-025 was drawn at random after tuning and never tuned on.</p>
     <div class="tablewrap"><table id="tbl"></table></div>
   </div>
 
@@ -255,22 +256,21 @@ function seekFromEvent(ev) {
 }
 
 function table() {
-  const cols = [["calibrated_frames", "Calibrated", v => pct(v), 1], ["loc_err_m.median", "Median err", v => m(v), -1], ["loc_err_m.p90", "p90 err", v => m(v), -1],
-    ["recall", "Recall", v => pct(v), 1], ["precision", "Precision", v => pct(v), 1], ["idf1", "IDF1", v => v == null ? "–" : v.toFixed(2), 1],
-    ["id_switches", "ID switches", v => v, -1], ["team_acc", "Team acc.", v => pct(v), 1]];
   const pct = v => v == null ? "–" : (v * 100).toFixed(1) + "%", m = v => v == null ? "–" : v.toFixed(2) + " m";
+  const cols = [["calibrated_frames", "Calibrated", pct, 1], ["loc_err_m.median", "Median err", m, -1], ["loc_err_m.p90", "p90 err", m, -1],
+    ["recall", "Recall", pct, 1], ["precision", "Precision", pct, 1], ["idf1", "IDF1", v => v == null ? "–" : v.toFixed(3), 1],
+    ["team_acc", "Team acc.", pct, 1]];
   const get = (o, k) => k.split(".").reduce((a, b) => a == null ? a : a[b], o);
-  let h = "<thead><tr><th>Clip</th><th>Detections · version</th>" + cols.map(c => `<th>${c[1]}</th>`).join("") + "</tr></thead><tbody>";
+  let h = "<thead><tr><th>Clip</th><th>Detections · step</th>" + cols.map(c => `<th>${c[1]}</th>`).join("") + "</tr></thead><tbody>";
   for (const [ck, c] of Object.entries(DATA.clips)) for (const [rk, rr] of Object.entries(c.runs)) {
-    const base = rr.baseline, tuned = rr.metrics;
-    for (const [lab, mm, cls] of [["baseline", base, ""], ["tuned", tuned, "tuned"]]) {
-      if (!mm) continue;
-      const sel = ck === clip && rk === run ? " sel" : "";
-      h += `<tr class="${cls}${sel}"><td>${c.label}</td><td>${DATA.runLabels[rk]} · ${lab}</td>` + cols.map(([k, , f, dir]) => {
-        const v = get(mm, k), b = base ? get(base, k) : null;
-        let cl = ""; if (cls && b != null && v != null && v !== b) cl = (v - b) * dir > 0 ? "good" : "bad";
-        return `<td class="${cl}">${f(v)}</td>`; }).join("") + "</tr>";
-    }
+    const vs = rr.versions, base = vs[0].metrics;
+    vs.forEach((v, i) => {
+      const last = i === vs.length - 1, sel = ck === clip && rk === run ? " sel" : "";
+      h += `<tr class="${last ? "tuned" : ""}${sel}"><td>${i === 0 ? c.label : ""}</td><td>${DATA.runLabels[rk]} · ${v.label}</td>` + cols.map(([k, , f, dir]) => {
+        const val = get(v.metrics, k), b = get(base, k);
+        let cl = ""; if (i > 0 && b != null && val != null && Math.abs(val - b) > 1e-9) cl = (val - b) * dir > 0 ? "good" : "bad";
+        return `<td class="${cl}">${f(val)}</td>`; }).join("") + "</tr>";
+    });
   }
   document.getElementById("tbl").innerHTML = h + "</tbody>";
 }

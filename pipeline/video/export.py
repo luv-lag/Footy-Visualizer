@@ -14,6 +14,7 @@ from dataclasses import asdict, fields
 
 import numpy as np
 
+from pitchcal import DivisionModel
 from video.camera import CameraState
 from video.positions import PositionRow
 
@@ -45,3 +46,22 @@ def write_camera_csv(states: list[CameraState], path: str) -> None:
             fin = lambda v: "" if not np.isfinite(v) else round(float(v), 4)  # noqa: E731
             w.writerow([s.frame_idx, s.source, fin(s.fit), fin(s.explained),
                         "" if s.dm is None else s.dm.lam, *H])
+
+
+def read_camera_csv(path: str, image_size: tuple[int, int]) -> dict[int, CameraState]:
+    """Load a :func:`write_camera_csv` table back into camera states.
+
+    Lets tracking / team / position settings be re-tuned without re-running
+    the (slow) camera tracker.
+    """
+    out: dict[int, CameraState] = {}
+    with open(path, newline="") as f:
+        for r in csv.DictReader(f):
+            idx = int(r["frame"])
+            H = None
+            if r["h00"]:
+                H = np.array([float(r[f"h{i}{j}"]) for i in range(3) for j in range(3)]).reshape(3, 3)
+            dm = DivisionModel(float(r["lam"]), image_size) if r["lam"] else None
+            num = lambda v: float(v) if v else float("nan")  # noqa: E731
+            out[idx] = CameraState(idx, H, dm, r["source"], num(r["fit"]), num(r["explained"]))
+    return out

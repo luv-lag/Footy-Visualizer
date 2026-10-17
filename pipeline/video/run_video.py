@@ -48,16 +48,16 @@ from video.camera import (  # noqa: E402
     smooth_states,
 )
 from video.detectors import CachedDetector, make_detector  # noqa: E402
-from video.export import write_camera_csv, write_tracks_csv  # noqa: E402
+from video.export import read_camera_csv, write_camera_csv, write_tracks_csv  # noqa: E402
 from video.minimap import Minimap, annotate_frame, compose  # noqa: E402
 from video.positions import build_rows  # noqa: E402
 from video.reader import iter_frames, video_info  # noqa: E402
-from video.teams import TeamColourModel, TeamVoter  # noqa: E402
+from video.teams import TeamColourModel, TeamVoter, overlapped  # noqa: E402
 from video.tracking import (  # noqa: E402
     PERSON_CLASSES,
-    ColourGatedTracker,
     PlayerTracker,
     detections_to_xyxy,
+    split_on_colour_change,
 )
 
 
@@ -74,7 +74,11 @@ def run(
     start: int = 0,
     max_frames: int | None = None,
     render: bool = True,
-    colour_gating: bool = True,
+    colour_tracking: str = "split",
+    colour_margin: float = 0.3,
+    colour_window: int = 9,
+    off_pitch_margin: float = 2.0,
+    camera_from: str | None = None,
 ) -> dict:
     t_start = time.time()
     os.makedirs(out_dir, exist_ok=True)
@@ -89,6 +93,8 @@ def run(
 
     # ---- pass 1: forward -------------------------------------------------
     states: dict[int, CameraState] = {}
+    if camera_from:  # re-tune later stages without re-running the camera
+        states = read_camera_csv(camera_from, (info.width, info.height))
     detections: dict[int, list] = {}  # detection frame -> detections
     signatures: dict[int, list] = {}  # detection frame -> per-detection signature
     balls = {}
@@ -110,11 +116,12 @@ def run(
             if ball:
                 balls[idx] = max(ball, key=lambda d: d.confidence)
             timings["signature_s"] += time.time() - t0
-        t0 = time.time()
-        states[idx] = camera.update(frame, idx, player_boxes=boxes, player_feet=feet)
-        for b in camera.pop_backfilled():
-            states[b.frame_idx] = b
-        timings["camera_s"] += time.time() - t0
+        if not camera_from:
+            t0 = time.time()
+            states[idx] = camera.update(frame, idx, player_boxes=boxes, player_feet=feet)
+            for b in camera.pop_backfilled():
+                states[b.frame_idx] = b
+            timings["camera_s"] += time.time() - t0
         n += 1
         if n % 100 == 0:
             ok = sum(s.ok for s in states.values()) / len(states)
@@ -126,28 +133,39 @@ def run(
 
     # ---- pass 2: offline -------------------------------------------------
     t0 = time.time()
-    ordered = smooth_states([states[i] for i in sorted(states)])
+    ordered = [states[i] for i in sorted(states)]
+    if not camera_from:  # a reused camera table is already smoothed
+        ordered = smooth_states(ordered)
     states = {s.frame_idx: s for s in ordered}
-    # One colour model, two uses: per-detection colour gating for tracking,
-    # and the per-track team vote.
+    # One colour model, two uses: a tracking cue (cut tracks where their kit
+    # persistently changes; stitching then re-links the pieces) and the
+    # per-track team vote.  (Hard per-kit association was also tried: it
+    # fragments tracks on every misread crop and lowered IDF1 on all three
+    # SoccerNet GSR clips, so it is not offered.)
     colours = TeamColourModel().fit([s for sigs in signatures.values() for s in sigs if s is not None])
-    voter = TeamVoter(colours)
+    sig_of = {id(d): sig for idx in detections for d, sig in zip(detections[idx], signatures[idx])}
+    # Per-detection kit reading for the tracking cue: abstain (-1) when the
+    # crop overlaps another person or sits near the kit boundary -- exactly
+    # the crops that are unreliable, and exactly when swaps happen.
+    colour_of: dict[int, int] = {}
+    for idx, dets in detections.items():
+        persons = [d for d in dets if d.class_name in PERSON_CLASSES]
+        for d, occ in zip(persons, overlapped(persons)):
+            colour_of[id(d)] = -1 if occ else colours.predict(sig_of[id(d)], min_margin=colour_margin)
     tracker_kw = dict(kind=tracker, fps=fps, stride=stride)
-    players = ColourGatedTracker(**tracker_kw) if colour_gating else PlayerTracker(**tracker_kw)
+    players = PlayerTracker(**tracker_kw)
     tracked = []
     for idx in sorted(detections):
-        dets = detections[idx]
-        sig_of = {id(d): sig for d, sig in zip(dets, signatures[idx])}
-        if colour_gating:
-            groups = [colours.predict(sig_of[id(d)]) for d in dets]
-            tds = players.update(dets, groups, states.get(idx), idx)
-        else:
-            tds = players.update(dets, states.get(idx), idx)
-        for td in tds:
-            tracked.append(td)
-            voter.add(td.track_id, sig_of[id(td.det)])
+        tracked += players.update(detections[idx], states.get(idx), idx)
+    n_splits = 0
+    if colour_tracking == "split":
+        tracked, n_splits = split_on_colour_change(tracked, colour_of, window=colour_window)
+    voter = TeamVoter(colours)
+    for td in tracked:
+        voter.add(td.track_id, sig_of[id(td.det)])
     teams = voter.assign()
-    rows, gate_stats = build_rows(tracked, balls, states, teams, fps, stride=stride)
+    rows, gate_stats = build_rows(tracked, balls, states, teams, fps, stride=stride,
+                                  off_pitch_margin_m=off_pitch_margin)
     write_tracks_csv(rows, os.path.join(out_dir, "tracks.csv"))
     write_camera_csv(ordered, os.path.join(out_dir, "camera.csv"))
     timings["offline_s"] += time.time() - t0
@@ -166,7 +184,8 @@ def run(
         "detect_stride": stride,
         "detector": detector,
         "tracker": tracker,
-        "colour_gating": colour_gating,
+        "colour_tracking": colour_tracking,
+        "colour_splits": n_splits,
         "anchor": anchor,
         "calibrated_fraction": round(sum(s.ok for s in ordered) / len(ordered), 4),
         "camera_sources": dict(sources),
@@ -226,12 +245,21 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--start", type=int, default=0)
     p.add_argument("--max-frames", type=int, default=None)
     p.add_argument("--no-render", action="store_true")
-    p.add_argument("--no-colour-gating", action="store_true",
-                   help="associate on position only (kit colour still sets teams)")
+    p.add_argument("--colour-tracking", default="split", choices=["split", "off"],
+                   help="kit colour as a tracking cue: split tracks where their kit "
+                        "persistently changes (default), or position only")
+    p.add_argument("--colour-margin", type=float, default=0.3,
+                   help="min kit-colour margin for a crop to count as a tracking cue")
+    p.add_argument("--colour-window", type=int, default=9,
+                   help="smoothing window (detections) before a kit change splits a track")
+    p.add_argument("--off-pitch-margin", type=float, default=2.0,
+                   help="metres outside the lines a person may stand and still be kept")
+    p.add_argument("--camera-from", help="reuse a previous run's camera.csv (skips camera tracking)")
     a = p.parse_args(argv)
     summary = run(a.video, a.out, a.detector, a.detect_stride, a.tracker, a.anchor, a.device,
                   a.refine_every, a.reanchor_every, a.start, a.max_frames, not a.no_render,
-                  not a.no_colour_gating)
+                  a.colour_tracking, a.colour_margin, a.colour_window, a.off_pitch_margin,
+                  a.camera_from)
     print(json.dumps(summary, indent=2, default=float))
 
 
