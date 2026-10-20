@@ -1,5 +1,5 @@
 batch lid document="cad/lid.mantiprt" {
-  @m1 part material abs_3d_print;
+  @m1 part material pla_3d_print;
   @m2 part process fdm;
   @v1 var lid_t:length = 3.2mm description="lid plate thickness";
   @v2 var outer_len:length = 206.4mm description="housing outside length (from cad/housing.mantiprt)";

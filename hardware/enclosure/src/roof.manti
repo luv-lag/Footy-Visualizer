@@ -1,5 +1,5 @@
 batch roof document="cad/roof.mantiprt" {
-  @m1 part material abs_3d_print;
+  @m1 part material pla_3d_print;
   @m2 part process fdm;
   @v1 var top_z:length = 108.4mm description="housing top surface height (from cad/housing.mantiprt)";
   @v2 var air_gap:length = 12mm description="shaded air gap between the roof and the housing top: the sun heats the roof, not the box";

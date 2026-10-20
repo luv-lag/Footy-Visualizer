@@ -1,0 +1,110 @@
+batch cradle document="cad/cradle.mantiprt" {
+  @m1 part material pla_3d_print;
+  @m2 part process fdm;
+  @v1 var plate_t:length = 4mm description="back plate thickness (camera side of the phone)";
+  @v2 var rail_h:length = 7mm description="phone back stands off the plate by this: clears a 5mm camera bump";
+  @v3 var lip_gap:length = 10.5mm description="rail face (Y=0) to the screen-side lips: fits phones up to 9.5mm thick, 3mm foam on the lips takes up thinner ones";
+  @v4 var lens_end_x:length = 82mm description="end stop face at X = -lens_end_x: the phone's camera end butts against it";
+  @v5 var open_x:length = 5mm description="camera opening runs from the left end to X = -open_x: covers every lens position on 130-166mm phones";
+  @v6 var open_h:length = 88mm description="camera opening height above the bottom lip (phones up to 80mm wide)";
+  @v7 var x_left:length = 98mm description="cradle left end at X = -x_left";
+  @v8 var x_right:length = 95mm description="cradle right end at X = x_right";
+  @v9 var top_z:length = 103mm description="top of the back plate and sun visor";
+  @v10 var visor_d:length = 20mm description="sun visor reach in front of the plate; the 42.5deg lens cone passes under it with about 8deg to spare";
+  @v11 var lip_t:length = 6mm description="bottom lip thickness under the phone";
+  @v12 var slot_x1:length = 20mm description="clamp slot 1 at X = slot_x1";
+  @v13 var slot_x2:length = 70mm description="clamp slot 2 at X = slot_x2";
+  @v14 var insert_14_d:length = 8.0mm description="hole for a 1/4-20 UNC heat-set insert (assumed, check the maker's table)";
+
+  // back plate: right panel full height, top strip over the camera opening
+  @d1 datum plane p_plate kind=offset refs=[XZ] offset=-(rail_h + plate_t);
+  @s1 sketch create panel_s on=datum:p_plate {
+    rectangle pr center=[45mm,48.5mm] width=x_right + open_x height=top_z + lip_t;
+    constraint distance prx a=origin b=pr.br value=x_right along=x;
+    constraint distance prz a=origin b=pr.br value=lip_t along=y;
+  }
+  @e1 extrude panel sketch=panel_s depth=plate_t direction=normal_positive merge=false;
+  @s2 sketch create strip_s on=datum:p_plate {
+    rectangle ts center=[-51.5mm,95.5mm] width=x_left - open_x height=top_z - open_h;
+    constraint distance tsx a=origin b=ts.br value=open_x along=x;
+    constraint distance tsz a=origin b=ts.tr value=top_z along=y;
+  }
+  @e2 extrude strip sketch=strip_s depth=plate_t direction=normal_positive merge=true;
+
+  // bottom lip with a screen-side lip, along the full length
+  @d2 datum plane p_left kind=offset refs=[YZ] offset=-x_left;
+  @s3 sketch create lip_s on=datum:p_left {
+    rectangle sl center=[-1mm,-3mm] width=lip_gap + 2.5mm + rail_h + plate_t height=lip_t;
+    constraint distance slx a=origin b=sl.br value=rail_h + plate_t along=x;
+    constraint distance slz a=origin b=sl.br value=lip_t along=y;
+  }
+  @e3 extrude lip sketch=lip_s depth=x_left + x_right direction=normal_positive merge=true;
+  @s3b sketch create flip_s on=datum:p_left {
+    rectangle fl center=[-11.75mm,2.5mm] width=2.5mm height=5mm;
+    constraint distance flx a=origin b=fl.br value=lip_gap along=x;
+    constraint horizontal flz a=origin b=fl.br;
+  }
+  @e3b extrude front_lip sketch=flip_s depth=x_left + x_right direction=normal_positive merge=true;
+
+  // two rails the phone back rests on
+  @d3 datum plane p_rail kind=offset refs=[XZ] offset=-rail_h;
+  @s4 sketch create rails_s on=datum:p_rail {
+    rectangle r1 center=[15mm,32.5mm] width=4mm height=55mm;
+    rectangle r2 center=[55mm,32.5mm] width=4mm height=55mm;
+    constraint distance r1x a=origin b=r1.center value=15mm along=x;
+    constraint distance r1z a=origin b=r1.center value=32.5mm along=y;
+    constraint distance r2x a=origin b=r2.center value=55mm along=x;
+    constraint horizontal r2z a=r1.center b=r2.center;
+  }
+  @e4 extrude rails sketch=rails_s depth=rail_h direction=normal_positive merge=true;
+
+  // end stop for the phone's camera end
+  @d4 datum plane p_stop kind=offset refs=[YZ] offset=-(lens_end_x + 4mm);
+  @s5 sketch create stop_s on=datum:p_stop {
+    rectangle st center=[-3mm,5mm] width=lip_gap + 2.5mm + rail_h height=10mm;
+    constraint distance stx a=origin b=st.br value=rail_h along=x;
+    constraint horizontal stz a=origin b=st.br;
+  }
+  @e5 extrude stop sketch=stop_s depth=4mm direction=normal_positive merge=true;
+
+  // sun visor and drip lip on top
+  @d5 datum plane p_top kind=offset refs=[XY] offset=top_z;
+  @s6 sketch create visor_s on=datum:p_top {
+    rectangle vs center=[-1.5mm,19mm] width=x_left + x_right height=visor_d + plate_t;
+    constraint distance vsx a=origin b=vs.br value=x_right along=x;
+    constraint distance vsy a=origin b=vs.br value=rail_h along=y;
+  }
+  @e6 extrude visor sketch=visor_s depth=3mm direction=normal_negative merge=true;
+  @s7 sketch create drip_s on=datum:p_top {
+    rectangle dl center=[-1.5mm,29.5mm] width=x_left + x_right height=3mm;
+    constraint distance dlx a=origin b=dl.br value=x_right along=x;
+    constraint distance dly a=origin b=dl.tr value=rail_h + plate_t + visor_d along=y;
+  }
+  @e7 extrude drip sketch=drip_s depth=6mm direction=normal_negative merge=true;
+
+  // vertical slots for the sliding top clamp's M5 thumbscrews
+  @d6 datum plane p_plate_out kind=offset refs=[XZ] offset=-(rail_h + plate_t + 1mm);
+  @s8 sketch create slots_s on=datum:p_plate_out {
+    rectangle k1 center=[20mm,81mm] width=5.5mm height=22mm;
+    rectangle k2 center=[70mm,81mm] width=5.5mm height=22mm;
+    constraint distance k1x a=origin b=k1.center value=slot_x1 along=x;
+    constraint distance k1z a=origin b=k1.center value=81mm along=y;
+    constraint distance k2x a=origin b=k2.center value=slot_x2 along=x;
+    constraint horizontal k2z a=k1.center b=k2.center;
+  }
+  @e8 extrude slots sketch=slots_s depth=plate_t + 2mm direction=normal_positive operation=cut;
+
+  // tripod mount block under the lip
+  @d7 datum plane p_under kind=offset refs=[XY] offset=-lip_t;
+  @s9 sketch create mount_s on=datum:p_under {
+    rectangle mb center=origin width=40mm height=36mm;
+  }
+  @e9 extrude mount sketch=mount_s depth=14mm direction=normal_negative merge=true;
+  @h1 hole tripod_14 on=mount.cap.bottom at=[0mm, 0mm] kind=blind diameter=insert_14_d depth=12mm;
+  @b1 inspect bounds;
+}
+
+// --- screw grippers (applied as a second program on cad/cradle.mantiprt) ---
+// adds: var screw_y=4mm, insert_m6_d=8.0mm, end_screw_z=25mm;
+// top_nut block 20 x 24 x 12mm at X=45, Z 97-109 with an M6 insert hole at (45, -4) from the top;
+// end_block 20 x 40 x 12mm at X 91-103 with an M6 insert hole at (Y -4, Z 25) along X.

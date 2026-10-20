@@ -1,0 +1,29 @@
+batch clamp document="cad/top_clamp.mantiprt" {
+  @m1 part material pla_3d_print;
+  @m2 part process fdm;
+  @v1 var phone_w:length = 80mm description="phone width (64-80mm): the clamp's underside rests on the phone's top edge at Z = phone_w; it slides in the cradle slots, this value only places it in the model";
+  @v2 var lip_gap:length = 10.5mm description="screen-side lip at Y = -lip_gap, matching the cradle";
+  @v3 var rail_h:length = 7mm description="clamp's back face sits against the cradle plate at Y = rail_h";
+  @v4 var bar_h:length = 12mm description="clamp bar height";
+  @v5 var insert_m5_d:length = 6.4mm description="hole for an M5 heat-set insert (assumed, check the maker's table)";
+
+  @d1 datum plane p_left kind=offset refs=[YZ] offset=-5mm;
+  @s1 sketch create bar_s on=datum:p_left {
+    rectangle b center=[-3mm,86mm] width=lip_gap + 2.5mm + rail_h height=bar_h;
+    constraint distance bx a=origin b=b.br value=rail_h along=x;
+    constraint distance bz a=origin b=b.br value=phone_w along=y;
+  }
+  @e1 extrude bar sketch=bar_s depth=95mm direction=normal_positive merge=false;
+  @s2 sketch create lip_s on=datum:p_left {
+    rectangle l center=[-11.75mm,77.5mm] width=2.5mm height=5mm;
+    constraint distance lx a=origin b=l.tr value=lip_gap along=x;
+    constraint distance lz a=origin b=l.tr value=phone_w along=y;
+  }
+  @e2 extrude lip sketch=lip_s depth=95mm direction=normal_positive merge=true;
+
+  @h1 hole m5_insert on=bar.side.1 at=[[20mm, phone_w + bar_h/2],[70mm, phone_w + bar_h/2]] kind=blind diameter=insert_m5_d depth=10mm;
+  @b1 inspect bounds;
+}
+
+// screw seat for the top gripper thumbscrew (second program):
+// hole screw_seat on=bar.side.2 at=[45mm, -4mm] diameter=7mm depth=1.5mm;

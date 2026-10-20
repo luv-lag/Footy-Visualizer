@@ -1,5 +1,5 @@
 batch housing document="cad/housing.mantiprt" {
-  @m1 part material abs_3d_print;
+  @m1 part material pla_3d_print;
   @m2 part process fdm;
   @v1 var wall:length = 3.2mm description="side, top, bottom and end walls (8 perimeters of a 0.4mm nozzle; functional floor is 1.5mm)";
   @v2 var front_pad:length = 1.8mm description="extra front wall thickness: the 2.2mm window rabbet leaves 2.8mm behind it";

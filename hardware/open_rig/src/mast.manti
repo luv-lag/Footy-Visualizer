@@ -1,0 +1,25 @@
+batch mast document="cad/tripod_mast.mantiprt" {
+  @m1 part material aluminum_6061;
+  @v1 var mount_z:length = 20mm description="cradle mount face at Z = -mount_z";
+  @v2 var head_d:length = 50mm description="tripod head plate diameter";
+  @v3 var head_t:length = 6mm description="head plate thickness";
+  @v4 var stud_d:length = 6.35mm description="1/4-20 UNC camera screw (mock: plain cylinder at major diameter)";
+  @v5 var stud_l:length = 8mm description="screw protrusion into the cradle's insert (insert hole is 12mm deep)";
+  @v6 var col_d:length = 25mm description="centre column diameter";
+  @v7 var col_l:length = 300mm description="centre column length below the head";
+  @v8 var hub_d:length = 70mm description="leg hub (spider) diameter";
+  @v9 var hub_h:length = 30mm description="leg hub height";
+
+  @d1 datum plane p_mount kind=offset refs=[XY] offset=-mount_z;
+  @s1 sketch create stud_s on=datum:p_mount { circle st center=origin diameter=stud_d; }
+  @e1 extrude stud sketch=stud_s depth=stud_l direction=normal_positive merge=false;
+  @s2 sketch create head_s on=datum:p_mount { circle hd center=origin diameter=head_d; }
+  @e2 extrude head sketch=head_s depth=head_t direction=normal_negative merge=true;
+  @d2 datum plane p_col kind=offset refs=[XY] offset=-(mount_z + head_t);
+  @s3 sketch create col_s on=datum:p_col { circle cl center=origin diameter=col_d; }
+  @e3 extrude column sketch=col_s depth=col_l direction=normal_negative merge=true;
+  @d3 datum plane p_hub kind=offset refs=[XY] offset=-(mount_z + head_t + col_l - hub_h);
+  @s4 sketch create hub_s on=datum:p_hub { circle hb center=origin diameter=hub_d; }
+  @e4 extrude hub sketch=hub_s depth=hub_h direction=normal_negative merge=true;
+  @b1 inspect bounds;
+}

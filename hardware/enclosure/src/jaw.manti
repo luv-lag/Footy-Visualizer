@@ -1,5 +1,5 @@
 batch jaw document="cad/jaw.mantiprt" {
-  @m1 part material abs_3d_print;
+  @m1 part material pla_3d_print;
   @m2 part process fdm;
   @v1 var phone_len:length = 166mm description="SET THIS to your phone's length: the jaw grows to fill the gap (130-166mm phones)";
   @v2 var lens_end_x:length = 82mm description="the phone's lens end rests on the stop rib at X = -lens_end_x";

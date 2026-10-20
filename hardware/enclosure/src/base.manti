@@ -1,5 +1,5 @@
 batch base document="cad/base.mantiprt" {
-  @m1 part material abs_3d_print;
+  @m1 part material pla_3d_print;
   @m2 part process fdm;
   @v1 var wall:length = 3.2mm description="bay walls";
   @v2 var bank_l:length = 150mm description="power bank length (20,000mAh class, about 150 x 70 x 25mm; measure yours)";
