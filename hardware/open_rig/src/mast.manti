@@ -1,6 +1,6 @@
 batch mast document="cad/tripod_mast.mantiprt" {
   @m1 part material aluminum_6061;
-  @v1 var mount_z:length = 20mm description="cradle mount face at Z = -mount_z";
+  @v1 var mount_z:length = 34mm description="tripod screw face at Z = -mount_z: under the roll base";
   @v2 var head_d:length = 50mm description="tripod head plate diameter";
   @v3 var head_t:length = 6mm description="head plate thickness";
   @v4 var stud_d:length = 6.35mm description="1/4-20 UNC camera screw (mock: plain cylinder at major diameter)";

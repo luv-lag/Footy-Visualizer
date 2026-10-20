@@ -108,3 +108,47 @@ batch cradle document="cad/cradle.mantiprt" {
 // adds: var screw_y=4mm, insert_m6_d=8.0mm, end_screw_z=25mm;
 // top_nut block 20 x 24 x 12mm at X=45, Z 97-109 with an M6 insert hole at (45, -4) from the top;
 // end_block 20 x 40 x 12mm at X 91-103 with an M6 insert hole at (Y -4, Z 25) along X.
+
+// v3 edits: one-screw corner lock replaces the two grippers; roll pivot and adjust seat
+batch cradle document="cad/cradle.mantiprt" {
+  // remove the two-screw grippers (top nut, end block) and the clamp guide slots
+  @x1 feature delete top_screw;
+  @x2 feature delete end_screw;
+  @x3 feature delete top_nut;
+  @x4 feature delete end_block;
+  @x5 feature delete slots;
+  @x6 feature delete nut_s;
+  @x7 feature delete endblk_s;
+  @x8 feature delete slots_s;
+
+  // corner lock: one M6 thumbscrew at 45 deg in the XZ plane, pushing the corner jaw toward the end stop and down onto the lip
+  @c1 var corner_screw_y:length = 6.75mm description="corner screw axis at Y = -corner_screw_y (middle of the corner jaw)";
+  @s1 sketch create corner_blk_s on=datum:p_plate {
+    line k1 from_initial=[81.985mm,102.127mm] to_initial=[91.885mm,112.027mm];
+    line k2 from=k1.end to_initial=[106.027mm,97.885mm];
+    line k3 from=k2.end to_initial=[96.127mm,87.985mm];
+    line k4 from=k3.end to=k1.start;
+    constraint distance q1x a=origin b=k1.start value=81.985mm along=x;
+    constraint distance q1z a=origin b=k1.start value=102.127mm along=y;
+    constraint distance q2x a=origin b=k1.end value=91.885mm along=x;
+    constraint distance q2z a=origin b=k1.end value=112.027mm along=y;
+    constraint distance q3x a=origin b=k2.end value=106.027mm along=x;
+    constraint distance q3z a=origin b=k2.end value=97.885mm along=y;
+    constraint distance q4x a=origin b=k3.end value=96.127mm along=x;
+    constraint distance q4z a=origin b=k3.end value=87.985mm along=y;
+  }
+  @e1 extrude corner_block sketch=corner_blk_s depth=24mm direction=normal_positive merge=true;
+  @h1 hole corner_screw on=corner_block.side.1 at=[98.956mm, -corner_screw_y] kind=blind diameter=insert_m6_d depth=15mm;
+
+  // roll: pivot bolt through the mount block (axis along Y, the camera's view direction)
+  @h2 hole roll_pivot on=mount.side.0 at=[-15mm, -13mm] kind=blind diameter=6.4mm depth=37mm;
+  // seat for the roll adjust screw tip under the lip
+  @d9 datum plane p_lipbot kind=offset refs=[XY] offset=-lip_t;
+  @s9 sketch create seat_s on=datum:p_lipbot {
+    circle rs center=[60mm,0mm] diameter=6mm;
+    constraint distance rsx a=origin b=rs.center value=60mm along=x;
+    constraint horizontal rsy a=origin b=rs.center;
+  }
+  @h3 extrude roll_seat sketch=seat_s depth=1.5mm direction=normal_positive operation=cut;
+  @b1 inspect bounds;
+}

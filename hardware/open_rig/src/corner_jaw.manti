@@ -1,0 +1,69 @@
+// corner jaw: one M6 screw at 45 deg pushes it into the phone's top/end corner
+batch cjaw document="cad/corner_jaw.mantiprt" {
+  @m1 part material pla_3d_print;
+  @m2 part process fdm;
+  @v1 var phone_len:length = 150mm description="phone length; only places the jaw in the model (the one screw covers 130-166mm)";
+  @v2 var phone_w:length = 72mm description="phone width; only places the jaw in the model (64-80mm)";
+  @v3 var cx:length = phone_len - 82mm description="phone's far top corner X";
+  @v4 var cz:length = phone_w description="phone's far top corner Z";
+  @v5 var arm_t:length = 24mm description="arm thickness; the 45deg back face is 47mm wide so the screw tip lands on it for every phone";
+
+  @d1 datum plane p_back kind=offset refs=[XZ] offset=0.5mm;
+  @s1 sketch create jaw_s on=datum:p_back {
+    line a1 from_initial=[8mm,72mm] to_initial=[68mm,72mm];
+    line a2 from=a1.end to_initial=[68mm,17mm];
+    line a3 from=a2.end to_initial=[92mm,17mm];
+    line a4 from=a3.end to_initial=[92mm,63mm];
+    line a5 from=a4.end to_initial=[59mm,96mm];
+    line a6 from=a5.end to_initial=[8mm,96mm];
+    line a7 from=a6.end to=a1.start;
+    constraint distance j1x a=origin b=a1.start value=cx - 60mm along=x;
+    constraint distance j1z a=origin b=a1.start value=cz along=y;
+    constraint distance j2x a=origin b=a1.end value=cx along=x;
+    constraint distance j2z a=origin b=a1.end value=cz along=y;
+    constraint distance j3x a=origin b=a2.end value=cx along=x;
+    constraint distance j3z a=origin b=a2.end value=cz - 55mm along=y;
+    constraint distance j4x a=origin b=a3.end value=cx + arm_t along=x;
+    constraint distance j4z a=origin b=a3.end value=cz - 55mm along=y;
+    constraint distance j5x a=origin b=a4.end value=cx + arm_t along=x;
+    constraint distance j5z a=origin b=a4.end value=cz + 15mm - arm_t along=y;
+    constraint distance j6x a=origin b=a5.end value=cx + 15mm - arm_t along=x;
+    constraint distance j6z a=origin b=a5.end value=cz + arm_t along=y;
+    constraint distance j7x a=origin b=a6.end value=cx - 60mm along=x;
+    constraint distance j7z a=origin b=a6.end value=cz + arm_t along=y;
+  }
+  @e1 extrude jaw sketch=jaw_s depth=12.5mm direction=normal_positive merge=false;
+
+  // screen-side lip, 3mm over the phone's top and end edges
+  @d2 datum plane p_lip kind=offset refs=[XZ] offset=10.5mm;
+  @s2 sketch create lip_s on=datum:p_lip {
+    line b1 from_initial=[8mm,69mm] to_initial=[65mm,69mm];
+    line b2 from=b1.end to_initial=[65mm,17mm];
+    line b3 from=b2.end to_initial=[68mm,17mm];
+    line b4 from=b3.end to_initial=[68mm,72mm];
+    line b5 from=b4.end to_initial=[8mm,72mm];
+    line b6 from=b5.end to=b1.start;
+    constraint distance l1x a=origin b=b1.start value=cx - 60mm along=x;
+    constraint distance l1z a=origin b=b1.start value=cz - 3mm along=y;
+    constraint distance l2x a=origin b=b1.end value=cx - 3mm along=x;
+    constraint distance l2z a=origin b=b1.end value=cz - 3mm along=y;
+    constraint distance l3x a=origin b=b2.end value=cx - 3mm along=x;
+    constraint distance l3z a=origin b=b2.end value=cz - 55mm along=y;
+    constraint distance l4x a=origin b=b3.end value=cx along=x;
+    constraint distance l4z a=origin b=b3.end value=cz - 55mm along=y;
+    constraint distance l5x a=origin b=b4.end value=cx along=x;
+    constraint distance l5z a=origin b=b4.end value=cz along=y;
+    constraint distance l6x a=origin b=b5.end value=cx - 60mm along=x;
+    constraint distance l6z a=origin b=b5.end value=cz along=y;
+  }
+  @e2 extrude lip sketch=lip_s depth=2.5mm direction=normal_positive merge=true;
+
+  // groove across the 45deg back face: the screw tip rides in it, so the jaw can slide sideways to seat in the corner but cannot leave in Y
+  @s3 sketch create groove_s on=face:jaw.side.4 {
+    rectangle g center=[-6.75mm,2.83mm] width=6.5mm height=44mm;
+    constraint distance gx a=origin b=g.center value=6.75mm along=x;
+    constraint distance gy a=origin b=g.center value=2.83mm along=y;
+  }
+  @e3 extrude groove sketch=groove_s depth=2mm direction=normal_negative operation=cut;
+  @b1 inspect bounds;
+}
