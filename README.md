@@ -67,6 +67,12 @@ This writes `tracks.csv` (per frame and track: pitch x/y, team, speed),
 `--detector local` to run the same model locally through Roboflow's
 `inference` package (CPU or GPU).
 
+On multi-sport turf (American-football yard lines over faint or coloured
+soccer lines) pitchcal can't read the field and refuses every frame. Pass
+`--anchor-file landmarks.json` instead: `frame`, `image_points` (pixels)
+and `pitch_points` (the same points in pitch metres) for one frame. The
+camera is then carried through the clip from that frame by optical flow.
+
 ## Stack
 
 - **Detection**: Roboflow-hosted YOLO (`inference-sdk`)

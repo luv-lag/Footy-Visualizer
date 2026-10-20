@@ -43,6 +43,7 @@ import numpy as np  # noqa: E402
 from video.camera import (  # noqa: E402
     CameraState,
     CameraTracker,
+    ManualAnchor,
     pitchcal_anchor,
     pitchcal_then_pnlcalib_anchor,
     smooth_states,
@@ -79,6 +80,7 @@ def run(
     colour_window: int = 9,
     off_pitch_margin: float = 2.0,
     camera_from: str | None = None,
+    anchor_file: str | None = None,
 ) -> dict:
     t_start = time.time()
     os.makedirs(out_dir, exist_ok=True)
@@ -87,9 +89,16 @@ def run(
     stride = max(1, detect_stride)
 
     det = CachedDetector(make_detector(detector), os.path.join(out_dir, "detections.json"))
-    anchor_fn = pitchcal_anchor if anchor == "pitchcal" else pitchcal_then_pnlcalib_anchor(device)
-    camera = CameraTracker(anchor_fn=anchor_fn, refine_every=refine_every,
-                           reanchor_every=reanchor_every)
+    manual = ManualAnchor(anchor_file) if anchor_file else None
+    if manual:
+        # Flow only from the hand-picked anchor: refinement and re-anchoring
+        # score against the FIFA template, which is what failed on this field.
+        camera = CameraTracker(anchor_fn=manual, refine_every=10**9, reanchor_every=0,
+                               anchor_retry_every=1, max_backfill=10**6)
+    else:
+        anchor_fn = pitchcal_anchor if anchor == "pitchcal" else pitchcal_then_pnlcalib_anchor(device)
+        camera = CameraTracker(anchor_fn=anchor_fn, refine_every=refine_every,
+                               reanchor_every=reanchor_every)
 
     # ---- pass 1: forward -------------------------------------------------
     states: dict[int, CameraState] = {}
@@ -118,6 +127,8 @@ def run(
             timings["signature_s"] += time.time() - t0
         if not camera_from:
             t0 = time.time()
+            if manual:
+                manual.current = idx
             states[idx] = camera.update(frame, idx, player_boxes=boxes, player_feet=feet)
             for b in camera.pop_backfilled():
                 states[b.frame_idx] = b
@@ -255,11 +266,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--off-pitch-margin", type=float, default=2.0,
                    help="metres outside the lines a person may stand and still be kept")
     p.add_argument("--camera-from", help="reuse a previous run's camera.csv (skips camera tracking)")
+    p.add_argument("--anchor-file",
+                   help="JSON of hand-picked landmarks on one frame (frame, image_points, "
+                        "pitch_points in metres); the camera is carried from it by optical flow")
     a = p.parse_args(argv)
     summary = run(a.video, a.out, a.detector, a.detect_stride, a.tracker, a.anchor, a.device,
                   a.refine_every, a.reanchor_every, a.start, a.max_frames, not a.no_render,
                   a.colour_tracking, a.colour_margin, a.colour_window, a.off_pitch_margin,
-                  a.camera_from)
+                  a.camera_from, a.anchor_file)
     print(json.dumps(summary, indent=2, default=float))
 
 

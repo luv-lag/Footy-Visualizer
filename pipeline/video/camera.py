@@ -130,6 +130,38 @@ def pitchcal_then_pnlcalib_anchor(device: str = "cuda:0") -> AnchorFn:
     return anchor
 
 
+class ManualAnchor:
+    """Anchor from hand-picked landmarks on one frame (for fields pitchcal can't read).
+
+    Multi-sport turf is the usual case: American-football yard lines and
+    numbers dominate the paint, and the soccer markings are faint or
+    coloured.  The JSON file holds ``frame`` (the frame the points were
+    picked on), ``image_points`` (N >= 4 raw pixel coords) and
+    ``pitch_points`` (the same N points in corner-origin pitch metres).
+    The tracker sets :attr:`current` to the frame index before each update;
+    every other frame is refused, so flow carries the camera from there.
+    """
+
+    def __init__(self, path: str) -> None:
+        import json  # noqa: PLC0415
+
+        with open(path) as f:
+            spec = json.load(f)
+        self.frame = int(spec["frame"])
+        img = np.asarray(spec["image_points"], dtype=float)
+        pit = np.asarray(spec["pitch_points"], dtype=float)
+        if len(img) < 4 or img.shape != pit.shape:
+            raise ValueError(f"{path}: need >= 4 matching image_points / pitch_points")
+        self.H, _ = cv2.findHomography(pit, img, 0)
+        self.current: int | None = None
+
+    def __call__(self, frame, player_boxes, player_feet, player_labels):
+        if self.current != self.frame:
+            return None
+        h, w = frame.shape[:2]
+        return self.H, DivisionModel(0.0, (w, h)), "manual"
+
+
 class CameraTracker:
     """Online camera tracker for ONE continuous shot (call :meth:`reset` at cuts)."""
 
