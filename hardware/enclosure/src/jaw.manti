@@ -1,0 +1,33 @@
+batch jaw document="cad/jaw.mantiprt" {
+  @m1 part material abs_3d_print;
+  @m2 part process fdm;
+  @v1 var phone_len:length = 166mm description="SET THIS to your phone's length: the jaw grows to fill the gap (130-166mm phones)";
+  @v2 var lens_end_x:length = 82mm description="the phone's lens end rests on the stop rib at X = -lens_end_x";
+  @v3 var screw_face_x:length = 92mm description="jaw's screw face at X = screw_face_x: the M5 thumbscrew then has 8mm of travel before the inner wall";
+  @v4 var slack:length = 1mm description="fit gap the thumbscrew takes up";
+  @v5 var jaw_t:length = screw_face_x - (phone_len - lens_end_x + slack) description="jaw thickness along X";
+  @v6 var y_front:length = 0.5mm description="jaw front face (phone-back plane is Y = 0.75)";
+  @v7 var y_rear:length = 12mm description="jaw rear face at Y = -y_rear (lid is at -12.75)";
+  @v8 var z_lo:length = 14mm description="jaw bottom: clears the lower corner bosses (top at Z = 11.2)";
+  @v9 var z_hi:length = 90mm description="jaw top: clears the upper corner bosses (bottom at Z = 97.2)";
+  @v10 var screw_y:length = 4mm description="thumbscrew axis at Y = -screw_y";
+  @v11 var screw_z:length = 23.2mm description="thumbscrew axis height";
+
+  @d1 datum plane p_face kind=offset refs=[YZ] offset=phone_len - lens_end_x + slack;
+  @s1 sketch create jaw_s on=datum:p_face {
+    rectangle j center=[-5.75mm,52mm] width=y_front + y_rear height=z_hi - z_lo;
+    constraint distance jy a=origin b=j.top.start value=y_front along=x;
+    constraint distance jz a=origin b=j.center value=(z_hi + z_lo)/2 along=y;
+  }
+  @e1 extrude jaw sketch=jaw_s depth=jaw_t direction=normal_positive merge=false;
+
+  @s2 sketch create slot_s on=datum:p_face {
+    rectangle c center=[-3mm,51mm] width=10mm height=30mm;
+    constraint distance cy a=origin b=c.top.start value=2mm along=x;
+    constraint distance cz a=origin b=c.center value=51mm along=y;
+  }
+  @e2 extrude cable_slot sketch=slot_s depth=jaw_t + 1mm direction=normal_positive operation=cut;
+
+  @h1 hole screw_seat on=jaw.cap.top at=[-screw_y, screw_z] kind=blind diameter=6mm depth=1.5mm;
+  @b1 inspect bounds;
+}

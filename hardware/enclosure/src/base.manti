@@ -1,0 +1,88 @@
+batch base document="cad/base.mantiprt" {
+  @m1 part material abs_3d_print;
+  @m2 part process fdm;
+  @v1 var wall:length = 3.2mm description="bay walls";
+  @v2 var bank_l:length = 150mm description="power bank length (20,000mAh class, about 150 x 70 x 25mm; measure yours)";
+  @v3 var bank_w:length = 70mm description="power bank width";
+  @v4 var bank_t:length = 25mm description="power bank thickness (lies flat)";
+  @v5 var inner_len:length = 170mm description="bay inside length: bank plus 20mm for a right-angle USB-C plug";
+  @v6 var inner_d:length = bank_w + 4mm description="bay inside depth (Y)";
+  @v7 var inner_h:length = bank_t + 6mm description="bay inside height: bank plus room under the M4 insert bosses";
+  @v8 var outer_len:length = inner_len + 2*wall description="bay outside length";
+  @v9 var outer_d:length = inner_d + 2*wall description="bay outside depth";
+  @v10 var outer_h:length = inner_h + 2*wall description="bay outside height; its top meets the housing floor at Z = 0";
+  @v11 var screw_x:length = 70mm description="M4 inserts at X = +-screw_x, Y = -screw_y (housing floor screws)";
+  @v12 var screw_y:length = 2mm description="M4 inserts Y offset";
+  @v13 var insert_m4_d:length = 5.6mm description="hole for an M4 heat-set insert (assumed, check the insert maker's table)";
+  @v14 var cable_x:length = 74mm description="cable hole under the housing's floor hole";
+  @v15 var rail_len:length = 100mm description="Arca-Swiss style dovetail length along X";
+  @v16 var arca_w:length = 38mm description="dovetail width at the clamp face (Arca-Swiss nominal 38mm, from memory, unconfirmed)";
+  @v17 var arca_bevel:length = 5mm description="45deg bevel height: the clamp jaws grip these faces";
+  @v18 var arca_h:length = 10mm description="rail height under the bay floor";
+  @v19 var insert_14_d:length = 8.0mm description="hole for a 1/4-20 UNC heat-set insert (assumed, check the maker's table)";
+  @v20 var insert_38_d:length = 12.0mm description="hole for a 3/8-16 UNC heat-set insert (assumed, check the maker's table)";
+  @v21 var mount2_x:length = 30mm description="3/8-16 insert at X = mount2_x; anti-twist pin hole at X = -mount2_x";
+
+  @s1 sketch create footprint on=XY { rectangle box center=origin width=outer_len height=outer_d; }
+  @e1 extrude bay sketch=footprint depth=outer_h direction=normal_negative merge=false;
+  @sh shell hollow faces=[bay.side.0] thickness=wall;
+
+  // M4 insert bosses under the bay top
+  @d1 datum plane p_top_in kind=offset refs=[XY] offset=-wall;
+  @s2 sketch create boss_s on=datum:p_top_in {
+    circle ba center=[-70mm,-2mm] diameter=11mm;
+    circle bb center=[70mm,-2mm] diameter=11mm;
+    constraint distance bax a=origin b=ba.center value=screw_x along=x;
+    constraint distance bay_ a=origin b=ba.center value=screw_y along=y;
+    constraint distance bbx a=origin b=bb.center value=screw_x along=x;
+    constraint horizontal bby a=ba.center b=bb.center;
+  }
+  @e2 extrude bosses sketch=boss_s depth=5mm direction=normal_negative merge=true;
+
+  // Arca-Swiss style dovetail rail under the floor, along X
+  @d2 datum plane p_rail kind=offset refs=[YZ] offset=-rail_len/2;
+  @s3 sketch create rail_s on=datum:p_rail {
+    line l1 from_initial=[-19mm,-47.4mm] to_initial=[19mm,-47.4mm];
+    line l2 from=l1.end to_initial=[14mm,-42.4mm];
+    line l3 from=l2.end to_initial=[14mm,-37.4mm];
+    line l4 from=l3.end to_initial=[-14mm,-37.4mm];
+    line l5 from=l4.end to_initial=[-14mm,-42.4mm];
+    line l6 from=l5.end to=l1.start;
+    constraint distance p1x a=origin b=l1.start value=arca_w/2 along=x;
+    constraint distance p1z a=origin b=l1.start value=outer_h + arca_h along=y;
+    constraint distance p2x a=origin b=l1.end value=arca_w/2 along=x;
+    constraint distance p2z a=origin b=l1.end value=outer_h + arca_h along=y;
+    constraint distance p3x a=origin b=l2.end value=arca_w/2 - arca_bevel along=x;
+    constraint distance p3z a=origin b=l2.end value=outer_h + arca_h - arca_bevel along=y;
+    constraint distance p4x a=origin b=l3.end value=arca_w/2 - arca_bevel along=x;
+    constraint distance p4z a=origin b=l3.end value=outer_h along=y;
+    constraint distance p5x a=origin b=l4.end value=arca_w/2 - arca_bevel along=x;
+    constraint distance p5z a=origin b=l4.end value=outer_h along=y;
+    constraint distance p6x a=origin b=l5.end value=arca_w/2 - arca_bevel along=x;
+    constraint distance p6z a=origin b=l5.end value=outer_h + arca_h - arca_bevel along=y;
+  }
+  @e3 extrude rail sketch=rail_s depth=rail_len direction=normal_positive merge=true;
+
+  // strap slots in the end walls (hook-and-loop strap holds the bank)
+  @d3 datum plane p_end kind=offset refs=[YZ] offset=outer_len/2 + 1mm;
+  @s4 sketch create strap_s on=datum:p_end {
+    rectangle st center=[0mm,-18.7mm] width=26mm height=4mm;
+    constraint vertical stc a=origin b=st.center;
+    constraint distance stz a=origin b=st.center value=outer_h/2 along=y;
+  }
+  @e4 extrude strap_r sketch=strap_s depth=wall + 2mm direction=normal_negative operation=cut;
+  @d4 datum plane p_end2 kind=offset refs=[YZ] offset=-(outer_len/2 + 1mm);
+  @s5 sketch create strap2_s on=datum:p_end2 {
+    rectangle st2 center=[0mm,-18.7mm] width=26mm height=4mm;
+    constraint vertical st2c a=origin b=st2.center;
+    constraint distance st2z a=origin b=st2.center value=outer_h/2 along=y;
+  }
+  @e5 extrude strap_l sketch=strap2_s depth=wall + 2mm direction=normal_positive operation=cut;
+
+  @h1 hole m4_insert on=bay.cap.top at=[[-screw_x, -screw_y],[screw_x, -screw_y]] kind=blind diameter=insert_m4_d depth=7.5mm;
+  @h2 hole cable_hole on=bay.cap.top at=[cable_x, -5mm] kind=blind diameter=14mm depth=wall + 1mm;
+  @h3 hole tripod_14 on=rail.side.0 at=[0mm, 0mm] kind=blind diameter=insert_14_d depth=12mm;
+  @h4 hole tripod_38 on=rail.side.0 at=[mount2_x, 0mm] kind=blind diameter=insert_38_d depth=12mm;
+  @h5 hole anti_twist on=rail.side.0 at=[-mount2_x, 0mm] kind=blind diameter=5mm depth=6mm;
+  @b1 inspect bounds;
+}

@@ -1,0 +1,42 @@
+batch roof document="cad/roof.mantiprt" {
+  @m1 part material abs_3d_print;
+  @m2 part process fdm;
+  @v1 var top_z:length = 108.4mm description="housing top surface height (from cad/housing.mantiprt)";
+  @v2 var air_gap:length = 12mm description="shaded air gap between the roof and the housing top: the sun heats the roof, not the box";
+  @v3 var roof_t:length = 3mm description="roof plate thickness";
+  @v4 var roof_w:length = 226.4mm description="roof length in X: housing 206.4mm plus a 10mm overhang each end";
+  @v5 var y_front:length = 32.75mm description="front edge of the hood: 20mm past the housing front (Y = 12.75); the 42.5deg lens cone passes under it with 12mm to spare";
+  @v6 var y_rear:length = 17.75mm description="rear edge at Y = -y_rear: 2mm past the lid";
+  @v7 var post_x:length = 80mm description="posts at X = +-post_x, Y = 0, over the housing's M3 inserts";
+  @v8 var post_d:length = 10mm description="post diameter";
+  @v9 var lip_h:length = 3mm description="drip lip along the front edge (kept to 3mm so it stays out of the lens view)";
+
+  @d1 datum plane p_top kind=offset refs=[XY] offset=top_z;
+  @s1 sketch create posts_s on=datum:p_top {
+    circle pa center=[-80mm,0mm] diameter=post_d;
+    circle pb center=[80mm,0mm] diameter=post_d;
+    constraint distance pax a=origin b=pa.center value=post_x along=x;
+    constraint horizontal pay a=origin b=pa.center;
+    constraint distance pbx a=origin b=pb.center value=post_x along=x;
+    constraint horizontal pby a=origin b=pb.center;
+  }
+  @e1 extrude posts sketch=posts_s depth=air_gap direction=normal_positive merge=false;
+
+  @d2 datum plane p_under kind=offset refs=[XY] offset=top_z + air_gap;
+  @s2 sketch create roof_s on=datum:p_under {
+    rectangle rf center=[0mm,7.5mm] width=roof_w height=y_front + y_rear;
+    constraint vertical rfc a=origin b=rf.center;
+    constraint distance rfy a=origin b=rf.top.start value=y_front along=y;
+  }
+  @e2 extrude roofplate sketch=roof_s depth=roof_t direction=normal_positive merge=true;
+
+  @s3 sketch create lip_s on=datum:p_under {
+    rectangle lp center=[0mm,31.25mm] width=roof_w height=3mm;
+    constraint vertical lpc a=origin b=lp.center;
+    constraint distance lpy a=origin b=lp.top.start value=y_front along=y;
+  }
+  @e3 extrude lip sketch=lip_s depth=lip_h direction=normal_negative merge=true;
+
+  @h1 hole roof_screw on=roofplate.cap.top at=[[-post_x, 0mm],[post_x, 0mm]] kind=blind standard=iso size=M3 fit=normal depth=roof_t + air_gap + 1mm;
+  @b1 inspect bounds;
+}

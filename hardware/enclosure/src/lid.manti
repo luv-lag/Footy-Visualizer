@@ -1,0 +1,48 @@
+batch lid document="cad/lid.mantiprt" {
+  @m1 part material abs_3d_print;
+  @m2 part process fdm;
+  @v1 var lid_t:length = 3.2mm description="lid plate thickness";
+  @v2 var outer_len:length = 206.4mm description="housing outside length (from cad/housing.mantiprt)";
+  @v3 var outer_h:length = 108.4mm description="housing outside height";
+  @v4 var y_back:length = 12.75mm description="housing back opening sits at Y = -y_back";
+  @v5 var boss_x:length = 96.5mm description="lid screw bosses at X = +-boss_x";
+  @v6 var boss_z1:length = 6.7mm description="lower lid screw height";
+  @v7 var boss_z2:length = 101.7mm description="upper lid screw height";
+  @v8 var pad_h:length = 1.5mm description="foam-pad bosses: 1.5mm printed + 3mm EVA foam presses the phone screen onto the rails";
+  @v9 var vent_z:length = 17mm description="inlet vent slots sit low, under the phone and behind its lower edge (chimney inlet)";
+
+  @d1 datum plane p_back kind=offset refs=[XZ] offset=y_back;
+  @s1 sketch create plate_s on=datum:p_back {
+    rectangle pl center=[0mm,54.2mm] width=outer_len height=outer_h;
+    constraint vertical pc a=origin b=pl.center;
+    constraint distance pz a=origin b=pl.center value=outer_h/2 along=y;
+  }
+  @e1 extrude plate sketch=plate_s depth=lid_t direction=normal_positive merge=false;
+
+  @s2 sketch create pads_s on=datum:p_back {
+    rectangle f1 center=[-10mm,60mm] width=20mm height=50mm;
+    rectangle f2 center=[30mm,60mm] width=20mm height=50mm;
+    constraint distance f1x a=origin b=f1.center value=10mm along=x;
+    constraint distance f1z a=origin b=f1.center value=60mm along=y;
+    constraint distance f2x a=origin b=f2.center value=30mm along=x;
+    constraint horizontal f2z a=f1.center b=f2.center;
+  }
+  @e2 extrude pads sketch=pads_s depth=pad_h direction=normal_negative merge=true;
+
+  @d2 datum plane p_back_out kind=offset refs=[XZ] offset=y_back + lid_t + 1mm;
+  @s3 sketch create vents_s on=datum:p_back_out {
+    rectangle a1 center=[-70mm,17mm] width=26mm height=4mm;
+    rectangle a2 center=[-5mm,17mm] width=26mm height=4mm;
+    rectangle a3 center=[60mm,17mm] width=26mm height=4mm;
+    constraint distance a1x a=origin b=a1.center value=70mm along=x;
+    constraint distance a1z a=origin b=a1.center value=vent_z along=y;
+    constraint distance a2x a=origin b=a2.center value=5mm along=x;
+    constraint horizontal a2z a=a1.center b=a2.center;
+    constraint distance a3x a=origin b=a3.center value=60mm along=x;
+    constraint horizontal a3z a=a1.center b=a3.center;
+  }
+  @e3 extrude vents sketch=vents_s depth=lid_t + 2mm direction=normal_negative operation=cut;
+
+  @h1 hole lid_screw on=plate.cap.top at=[[-boss_x, boss_z1],[boss_x, boss_z1],[-boss_x, boss_z2],[boss_x, boss_z2]] kind=blind standard=iso size=M3 fit=normal depth=lid_t + 1mm;
+  @b1 inspect bounds;
+}

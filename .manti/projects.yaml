@@ -1,0 +1,7 @@
+# Manti projects for this folder. Your assistant reads this file at the start of a session; commit it.
+server: https://app.mantiai.com
+projects:
+  - id: p_9bac9c667006b013
+    name: "Camera Enclosure"
+    page: https://app.mantiai.com/projects/p_9bac9c667006b013
+    created: 2026-10-20T17:40:22Z

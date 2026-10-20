@@ -1,0 +1,187 @@
+batch housing document="cad/housing.mantiprt" {
+  @m1 part material abs_3d_print;
+  @m2 part process fdm;
+  @v1 var wall:length = 3.2mm description="side, top, bottom and end walls (8 perimeters of a 0.4mm nozzle; functional floor is 1.5mm)";
+  @v2 var front_pad:length = 1.8mm description="extra front wall thickness: the 2.2mm window rabbet leaves 2.8mm behind it";
+  @v3 var phone_len_max:length = 166mm description="longest supported phone (Pro Max / Ultra / Pro XL class)";
+  @v4 var phone_w_max:length = 80mm description="widest supported phone";
+  @v5 var phone_t_max:length = 9.5mm description="thickest supported phone body, without camera bump";
+  @v7 var rail_h:length = 7mm description="phone back stands off the front pad by this: clears a 5mm bump with 2mm for the lens gasket";
+  @v8 var end_gap:length = 18mm description="phone's lens end sits this far from the inner end wall so the ultra-wide view clears it";
+  @v9 var jaw_zone:length = 14mm description="clamp jaw (8mm) plus 6mm screw travel at the far end";
+  @v10 var ledge_h:length = 8mm description="phone bottom edge rests this high above the inner floor";
+  @v11 var top_gap:length = 14mm description="space above the widest phone so the lens view clears the top wall";
+  @v12 var lid_gap:length = 4mm description="room behind the screen for the lid's foam pads";
+  @v13 var inner_len:length = end_gap + phone_len_max + 2mm + jaw_zone description="inside length, X";
+  @v14 var inner_h:length = ledge_h + phone_w_max + top_gap description="inside height, Z";
+  @v15 var inner_d:length = rail_h + phone_t_max + lid_gap description="inside depth from front pad to back opening, Y";
+  @v16 var outer_len:length = inner_len + 2*wall description="outside length";
+  @v17 var outer_h:length = inner_h + 2*wall description="outside height";
+  @v18 var outer_d:length = inner_d + wall + front_pad description="outside depth (the back is open, closed by the lid)";
+  @v19 var y_phone_back:length = outer_d/2 - wall - front_pad - rail_h description="Y of the plane the phone's back rests on";
+  @v20 var behind_d:length = y_phone_back + outer_d/2 description="depth from the phone-back plane to the back opening";
+  @v21 var rail_len:length = 70mm description="rail height along Z";
+  @v22 var rail_x2:length = 40mm description="second rail sits at X = +rail_x2";
+  @v23 var rail_x1:length = 10mm description="first rail sits at X = -rail_x1 (both under every phone 130-166mm long)";
+  @v24 var ledge_x:length = 50mm description="ledge blocks sit at X = -ledge_x and +(ledge_x - 20mm)";
+  @v25 var boss_sz:length = 9mm description="square lid-screw boss in each inner corner (1mm into the walls)";
+  @v26 var jaw_y:length = phone_t_max/2 - y_phone_back description="jaw screw axis sits this far behind Y=0 (mid phone thickness)";
+  @v27 var jaw_z:length = wall + ledge_h + 12mm description="jaw screw axis height: low on the phone end, below the cable";
+  @v28 var cable_z:length = wall + ledge_h + 41mm description="cable slot centre height (phone port is at mid width, 32-40mm up)";
+  @v29 var win_x:length = 59mm description="window aperture centre sits at X = -win_x";
+  @v30 var win_w:length = 70mm description="window aperture width: ultra-wide lens 28-53mm from the phone end, plus 21.4mm view clearance each side";
+  @v31 var win_h:length = 84mm description="window aperture height: lens 9-92mm above the floor incl. 9.6mm view clearance";
+  @v32 var win_z:length = 54mm description="window aperture centre height";
+  @v33 var pane_margin:length = 6mm description="window pane overlaps the aperture by this on every side";
+  @v34 var rabbet_d:length = 2.2mm description="outside rabbet depth for a 2mm acrylic/PC pane (sealed with clear silicone)";
+  @v35 var vent_w:length = 6mm description="top outlet vent slot width (X)";
+  @v36 var vent_l:length = 17mm description="top outlet vent slot length (Y)";
+  @v37 var post_x:length = 80mm description="roof posts at X = +-post_x, Y = 0";
+  @v38 var floor_screw_x:length = 70mm description="M4 screws to the battery bay at X = +-floor_screw_x";
+  @v39 var floor_screw_y:length = 2mm description="M4 screws to the battery bay at Y = -floor_screw_y";
+  @v40 var insert_m3_d:length = 4.0mm description="hole for an M3 x 5.7 heat-set insert (assumed, check the insert maker's table)";
+  @v41 var insert_m5_d:length = 6.4mm description="hole for an M5 heat-set insert (assumed, check the insert maker's table)";
+  @v42 var cable_x:length = 74mm description="floor hole for the power bank cable at X = +cable_x";
+
+  @s1 sketch create footprint on=XY { rectangle box center=origin width=outer_len height=outer_d; }
+  @e1 extrude shellbox sketch=footprint depth=outer_h direction=normal_positive merge=false;
+  @sh shell hollow faces=[shellbox.side.0] thickness=wall;
+
+  // front pad, inside the front wall
+  @d1 datum plane p_front_in kind=offset refs=[XZ] offset=-(outer_d/2 - wall);
+  @s2 sketch create pad_s on=datum:p_front_in {
+    rectangle pad center=[0mm,54mm] width=inner_len + wall height=inner_h + wall;
+    constraint vertical pc a=origin b=pad.center;
+    constraint distance pz a=origin b=pad.center value=wall + inner_h/2 along=y;
+  }
+  @e2 extrude pad sketch=pad_s depth=front_pad direction=normal_positive merge=true;
+
+  // two rails the phone back rests on
+  @d2 datum plane p_pad kind=offset refs=[XZ] offset=-(outer_d/2 - wall - front_pad);
+  @s3 sketch create rails_s on=datum:p_pad {
+    rectangle r1 center=[-10mm,58mm] width=4mm height=rail_len;
+    rectangle r2 center=[40mm,58mm] width=4mm height=rail_len;
+    constraint distance r1x a=origin b=r1.center value=rail_x1 along=x;
+    constraint distance r1z a=origin b=r1.center value=wall + ledge_h + 12mm + rail_len/2 along=y;
+    constraint distance r2x a=origin b=r2.center value=rail_x2 along=x;
+    constraint horizontal r2z a=r1.center b=r2.center;
+  }
+  @e3 extrude rails sketch=rails_s depth=rail_h direction=normal_positive merge=true;
+
+  // end stop rib and ledge blocks, behind the phone-back plane
+  @d3 datum plane p_floor kind=offset refs=[XY] offset=wall;
+  @s4 sketch create stop_s on=datum:p_floor {
+    rectangle st center=[-83.5mm,-6mm] width=3mm height=behind_d;
+    constraint distance stx a=origin b=st.right.start value=inner_len/2 - end_gap along=x;
+    constraint distance sty a=origin b=st.top.start value=y_phone_back along=y;
+  }
+  @e4 extrude stop sketch=stop_s depth=inner_h direction=normal_positive merge=true;
+  @s5 sketch create ledge_s on=datum:p_floor {
+    rectangle l1 center=[-50mm,-6mm] width=20mm height=behind_d;
+    rectangle l2 center=[30mm,-6mm] width=20mm height=behind_d;
+    constraint distance l1x a=origin b=l1.center value=ledge_x along=x;
+    constraint distance l1y a=origin b=l1.top.start value=y_phone_back along=y;
+    constraint distance l2x a=origin b=l2.center value=ledge_x - 20mm along=x;
+    constraint horizontal l2y a=l1.top.start b=l2.top.start;
+  }
+  @e5 extrude ledges sketch=ledge_s depth=ledge_h direction=normal_positive merge=true;
+
+  // lid screw bosses in the four inner corners, behind the phone-back plane
+  @d4 datum plane p_phoneback kind=offset refs=[XZ] offset=-y_phone_back;
+  @s6 sketch create bosses_s on=datum:p_phoneback {
+    rectangle b1 center=[-96.5mm,7.7mm] width=boss_sz height=boss_sz;
+    rectangle b2 center=[96.5mm,7.7mm] width=boss_sz height=boss_sz;
+    rectangle b3 center=[-96.5mm,100.7mm] width=boss_sz height=boss_sz;
+    rectangle b4 center=[96.5mm,100.7mm] width=boss_sz height=boss_sz;
+    constraint distance b1x a=origin b=b1.center value=inner_len/2 - boss_sz/2 + 1mm along=x;
+    constraint distance b1z a=origin b=b1.center value=wall + boss_sz/2 - 1mm along=y;
+    constraint distance b2x a=origin b=b2.center value=inner_len/2 - boss_sz/2 + 1mm along=x;
+    constraint horizontal b2z a=b1.center b=b2.center;
+    constraint vertical b3v a=b1.center b=b3.center;
+    constraint distance b3z a=origin b=b3.center value=outer_h - wall - boss_sz/2 + 1mm along=y;
+    constraint vertical b4v a=b2.center b=b4.center;
+    constraint horizontal b4z a=b3.center b=b4.center;
+  }
+  @e6 extrude bosses sketch=bosses_s depth=behind_d direction=normal_positive merge=true;
+
+  // jaw screw boss on the outside of the +X end wall
+  @d5 datum plane p_end kind=offset refs=[YZ] offset=outer_len/2;
+  @s7 sketch create jawboss_s on=datum:p_end {
+    circle jb center=[-4mm,23.2mm] diameter=14mm;
+    constraint distance jbx a=origin b=jb.center value=jaw_y along=x;
+    constraint distance jbz a=origin b=jb.center value=jaw_z along=y;
+  }
+  @e7 extrude jawboss sketch=jawboss_s depth=8mm direction=normal_positive merge=true;
+
+  // cable slot through the +X end wall
+  @d6 datum plane p_end_out kind=offset refs=[YZ] offset=outer_len/2 + 1mm;
+  @s8 sketch create cable_s on=datum:p_end_out {
+    rectangle cs center=[-4mm,52.2mm] width=phone_t_max + 1mm height=38mm;
+    constraint distance csx a=origin b=cs.center value=jaw_y along=x;
+    constraint distance csz a=origin b=cs.center value=cable_z along=y;
+  }
+  @e8 extrude cable_slot sketch=cable_s depth=wall + 2mm direction=normal_negative operation=cut;
+
+  // window aperture and the outside rabbet for the pane
+  @d7 datum plane p_front_out kind=offset refs=[XZ] offset=-(outer_d/2 + 1mm);
+  @s9 sketch create win_s on=datum:p_front_out {
+    rectangle w center=[-59mm,54mm] width=win_w height=win_h;
+    constraint distance wx a=origin b=w.center value=win_x along=x;
+    constraint distance wz a=origin b=w.center value=win_z along=y;
+  }
+  @e9 extrude window sketch=win_s depth=wall + front_pad + 2mm direction=normal_positive operation=cut;
+  @s10 sketch create rabbet_s on=datum:p_front_out {
+    rectangle rb center=[-59mm,54mm] width=win_w + 2*pane_margin height=win_h + 2*pane_margin;
+    constraint distance rbx a=origin b=rb.center value=win_x along=x;
+    constraint distance rbz a=origin b=rb.center value=win_z along=y;
+  }
+  @e10 extrude rabbet sketch=rabbet_s depth=1mm + rabbet_d direction=normal_positive operation=cut;
+
+  // top outlet vents (covered by the sun roof)
+  @d8 datum plane p_top_out kind=offset refs=[XY] offset=outer_h + 1mm;
+  @s11 sketch create vents_s on=datum:p_top_out {
+    rectangle v0 center=[-58mm,-2.5mm] width=vent_w height=vent_l;
+    constraint distance v0x a=origin b=v0.center value=58mm along=x;
+    constraint distance v0y a=origin b=v0.center value=2.5mm along=y;
+    rectangle v1 center=[-40mm,-2.5mm] width=vent_w height=vent_l;
+    constraint distance v1x a=origin b=v1.center value=40mm along=x;
+    constraint horizontal v1y a=v0.center b=v1.center;
+    rectangle v2 center=[-22mm,-2.5mm] width=vent_w height=vent_l;
+    constraint distance v2x a=origin b=v2.center value=22mm along=x;
+    constraint horizontal v2y a=v0.center b=v2.center;
+    rectangle v3 center=[-4mm,-2.5mm] width=vent_w height=vent_l;
+    constraint distance v3x a=origin b=v3.center value=4mm along=x;
+    constraint horizontal v3y a=v0.center b=v3.center;
+    rectangle v4 center=[14mm,-2.5mm] width=vent_w height=vent_l;
+    constraint distance v4x a=origin b=v4.center value=14mm along=x;
+    constraint horizontal v4y a=v0.center b=v4.center;
+    rectangle v5 center=[32mm,-2.5mm] width=vent_w height=vent_l;
+    constraint distance v5x a=origin b=v5.center value=32mm along=x;
+    constraint horizontal v5y a=v0.center b=v5.center;
+    rectangle v6 center=[50mm,-2.5mm] width=vent_w height=vent_l;
+    constraint distance v6x a=origin b=v6.center value=50mm along=x;
+    constraint horizontal v6y a=v0.center b=v6.center;
+  }
+  @e11 extrude top_vents sketch=vents_s depth=wall + 2mm direction=normal_negative operation=cut;
+
+  // roof post bosses under the top wall
+  @d9 datum plane p_top_in kind=offset refs=[XY] offset=outer_h - wall;
+  @s12 sketch create posts_s on=datum:p_top_in {
+    circle pa center=[-80mm,0mm] diameter=8mm;
+    circle pb center=[80mm,0mm] diameter=8mm;
+    constraint distance pax a=origin b=pa.center value=post_x along=x;
+    constraint horizontal pay a=origin b=pa.center;
+    constraint distance pbx a=origin b=pb.center value=post_x along=x;
+    constraint horizontal pby a=origin b=pb.center;
+  }
+  @e12 extrude roof_bosses sketch=posts_s depth=6mm direction=normal_negative merge=true;
+
+  @h1 hole lid_insert on=hollow.rim.0 at=[[-(inner_len/2 - boss_sz/2 + 1mm), wall + boss_sz/2 - 1mm],[inner_len/2 - boss_sz/2 + 1mm, wall + boss_sz/2 - 1mm],[-(inner_len/2 - boss_sz/2 + 1mm), outer_h - wall - boss_sz/2 + 1mm],[inner_len/2 - boss_sz/2 + 1mm, outer_h - wall - boss_sz/2 + 1mm]] kind=blind diameter=insert_m3_d depth=7mm;
+  @h2 hole jaw_insert on=jawboss.cap.top at=[-jaw_y, jaw_z] kind=blind diameter=insert_m5_d depth=8mm + wall + 1mm;
+  @h3 hole roof_insert on=shellbox.cap.top at=[[-post_x, 0mm],[post_x, 0mm]] kind=blind diameter=insert_m3_d depth=wall + 5mm;
+  @h4 hole bay_screw on=shellbox.cap.bottom at=[[-floor_screw_x, -floor_screw_y],[floor_screw_x, -floor_screw_y]] kind=blind standard=iso size=M4 fit=normal depth=wall + 1mm;
+  @h5 hole cable_hole on=shellbox.cap.bottom at=[cable_x, -5mm] kind=blind diameter=14mm depth=wall + 1mm;
+
+  @t1 inspect topology feature=bosses kind=faces;
+  @b1 inspect bounds;
+}
