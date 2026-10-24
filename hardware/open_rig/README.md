@@ -12,6 +12,8 @@ All parts share one coordinate frame:
 
 ![animation](rig_animation.gif)
 
+![isometric](render_iso_closeup.png) ![isometric, on the mock tripod](render_iso.png)
+
 ## How it holds the phone
 
 1. **Camera end.** The phone's lens end butts against a low end stop (X = −82). From there to the left end of the cradle, the camera side is fully open, from the bottom lip up to 88 mm. Every lens position on 130–166 mm phones looks straight out with nothing in front of it.
