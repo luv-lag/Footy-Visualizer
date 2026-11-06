@@ -42,3 +42,26 @@ This is a high-school game on a field with American-football yard lines painted 
 - Team separation score is 0.35. Green on green turf in low sun is hard for colour signatures, and RF-DETR has no referee class, so the referee is counted as a player.
 
 ![Multi-sport turf, RF-DETR](multisport_turf_rfdetr.jpg)
+
+### Roboflow football YOLO vs RF-DETR on the same clip
+
+The same clip, anchor and settings were run with `--detector hosted` (Roboflow's football YOLO, `football-players-detection-3zvbc/19`):
+
+| | RF-DETR (default) | Roboflow YOLO (experimental) |
+|---|---|---|
+| People per detected frame | about 19 | about 8 |
+| Referee / goalkeeper | counted as players | labelled, and kept out of the teams |
+| Team separation score | 0.35 | 0.31 |
+| Stitched tracks | 30 | 36 (more fragments) |
+| Calibrated frames | 90% | 90% |
+
+**Overlap.** Matched frame by frame (IoU > 0.3), the YOLO model found 39% of the people RF-DETR found, and only 82 people that RF-DETR missed. The misses aren't explained by player size or distance: missed players had a median height of 69 px against 64 px for found ones, and recall was 35–43% in every image band.
+
+**Likely causes:**
+- **Domain shift:** the model was trained on TV broadcasts, and this clip is a phone screen recording in low sun on multi-sport turf.
+- **Downscaling:** the inference SDK shrinks frames before upload.
+- **Confidence cut-off:** the server drops detections below 0.40.
+
+It stays in the code as an experimental option because it labels referees, goalkeepers and the ball.
+
+![Multi-sport turf, Roboflow YOLO](multisport_turf_roboflow.jpg)

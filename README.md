@@ -56,16 +56,24 @@ continuous camera (phase 1; broadcast cut/replay handling comes next):
    smoothing, and a speed gate that flags rather than draws implausible jumps.
 
 ```bash
+uv sync --extra dev --extra video   # adds RF-DETR + PyTorch (CPU is fine)
 .venv/bin/python pipeline/video/run_video.py clip.mp4 --out out/clip \
-    --detector hosted --detect-stride 3
+    --detector rfdetr --detect-stride 3
 ```
 
 This writes `tracks.csv` (per frame and track: pitch x/y, team, speed),
 `camera.csv`, `minimap.mp4` (annotated frame plus top-down map) and
 `summary.json` to `out/clip/`. Detections are cached in
-`out/clip/detections.json`, so re-runs don't call the detector again. Use
-`--detector local` to run the same model locally through Roboflow's
-`inference` package (CPU or GPU).
+`out/clip/detections.json`, so re-runs don't call the detector again.
+
+The default detector is RF-DETR, a COCO person detector run locally. It does
+not tell referees or goalkeepers apart, but it holds up on footage unlike
+TV broadcasts. `--detector hosted` (Roboflow API, needs `ROBOFLOW_API_KEY`)
+and `--detector local` use Roboflow's football YOLO model instead. That is
+**experimental**: it labels referees, goalkeepers and the ball, but on a
+phone recording of a sideline view it found only about 40% of the players
+RF-DETR found. See [`docs/results/`](docs/results/) for that comparison and
+the SoccerNet GSR scores.
 
 On multi-sport turf (American-football yard lines over faint or coloured
 soccer lines) pitchcal can't read the field and refuses every frame. Pass

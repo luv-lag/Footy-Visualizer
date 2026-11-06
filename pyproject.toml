@@ -20,6 +20,9 @@ dependencies = [
 # extra dependency on top of the above.
 app = ["gradio"]
 dev = ["pytest>=8"]
+# Default video detector (RF-DETR). Pulls in PyTorch; not needed for the
+# tests or the single-frame pipeline, so CI does not install it.
+video = ["rfdetr>=1.11"]
 
 [tool.uv]
 # Not an installable package: pipeline/, app/ and eval/ are run in place.

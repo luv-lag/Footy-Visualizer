@@ -180,4 +180,4 @@ def make_detector(name: str) -> DetectFn | None:
         return RFDETRDetector()
     if name == "none":
         return None
-    raise ValueError(f"unknown detector {name!r} (expected hosted, local or none)")
+    raise ValueError(f"unknown detector {name!r} (expected rfdetr, hosted, local or none)")

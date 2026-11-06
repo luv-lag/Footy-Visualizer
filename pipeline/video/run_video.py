@@ -8,7 +8,7 @@ Usage (project venv; add ``--anchor pitchcal+pnlcalib`` in the PnLCalib
 venv for the GPU fallback):
 
     .venv/bin/python pipeline/video/run_video.py clip.mp4 --out out/clip \\
-        --detector hosted --detect-stride 3
+        --detector rfdetr --detect-stride 3
 
 Outputs in ``--out``:
     tracks.csv      per (frame, track) pitch positions (see export.py)
@@ -65,7 +65,7 @@ from video.tracking import (  # noqa: E402
 def run(
     video: str,
     out_dir: str,
-    detector: str = "hosted",
+    detector: str = "rfdetr",
     detect_stride: int = 3,
     tracker: str = "bytetrack",
     anchor: str = "pitchcal",
@@ -241,8 +241,11 @@ def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("video")
     p.add_argument("--out", required=True, help="output directory")
-    p.add_argument("--detector", default="hosted", choices=["hosted", "local", "rfdetr", "none"],
-                   help="'none' = use the detection cache only")
+    p.add_argument("--detector", default="rfdetr", choices=["rfdetr", "hosted", "local", "none"],
+                   help="rfdetr (default) = RF-DETR person detector, local, needs the 'video' extra; "
+                        "hosted / local = Roboflow football YOLO (experimental: labels referees, "
+                        "goalkeepers and the ball, but finds far fewer players on non-broadcast "
+                        "footage); none = use the detection cache only")
     p.add_argument("--detect-stride", type=int, default=3,
                    help="detect every N-th frame (positions are interpolated between)")
     p.add_argument("--tracker", default="bytetrack",
