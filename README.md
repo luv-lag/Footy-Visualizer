@@ -34,6 +34,53 @@ The pipeline:
    and confidence rather than rendering a plausible looking map when the
    pipeline doesn't actually trust its output.
 
+## Video (work in progress)
+
+`pipeline/video/` extends the single-frame pipeline to clips from one
+continuous camera (phase 1; broadcast cut/replay handling comes next):
+
+1. **Camera tracking** (`camera.py`): anchor with pitchcal (optionally the
+   PnLCalib fallback), propagate the homography every frame with optical
+   flow on grass pixels, refine against the frame's own markings every few
+   frames, and report "lost" rather than guess when the fit decays. Frames
+   before the first anchor are recovered by propagating backwards.
+2. **Tracking in pitch space** (`tracking.py`): foot points are mapped to
+   metres before association, so camera pans and zooms don't break IDs
+   (image-space IoU trackers fragment badly on small, panning players).
+   Any tracker from Roboflow's `trackers` library can be used. Fragments are
+   stitched offline by pitch-space reachability.
+3. **Teams per track** (`teams.py`): `team_id_v2` signatures are pooled
+   across the clip, clustered once, and each track takes a majority vote.
+4. **Positions** (`positions.py`): an off-pitch gate (drops stands and
+   scoreboard detections), interpolation across the detection stride,
+   smoothing, and a speed gate that flags rather than draws implausible jumps.
+
+```bash
+uv sync --extra dev --extra video   # adds RF-DETR + PyTorch (CPU is fine)
+.venv/bin/python pipeline/video/run_video.py clip.mp4 --out out/clip \
+    --detector rfdetr --detect-stride 3
+```
+
+This writes `tracks.csv` (per frame and track: pitch x/y, team, speed),
+`camera.csv`, `minimap.mp4` (annotated frame plus top-down map) and
+`summary.json` to `out/clip/`. Detections are cached in
+`out/clip/detections.json`, so re-runs don't call the detector again.
+
+The default detector is RF-DETR, a COCO person detector run locally. It does
+not tell referees or goalkeepers apart, but it holds up on footage unlike
+TV broadcasts. `--detector hosted` (Roboflow API, needs `ROBOFLOW_API_KEY`)
+and `--detector local` use Roboflow's football YOLO model instead. That is
+**experimental**: it labels referees, goalkeepers and the ball, but on a
+phone recording of a sideline view it found only about 40% of the players
+RF-DETR found. See [`docs/results/`](docs/results/) for that comparison and
+the SoccerNet GSR scores.
+
+On multi-sport turf (American-football yard lines over faint or coloured
+soccer lines) pitchcal can't read the field and refuses every frame. Pass
+`--anchor-file landmarks.json` instead: `frame`, `image_points` (pixels)
+and `pitch_points` (the same points in pitch metres) for one frame. The
+camera is then carried through the clip from that frame by optical flow.
+
 ## Stack
 
 - **Detection**: Roboflow-hosted YOLO (`inference-sdk`)
@@ -46,7 +93,8 @@ The pipeline:
 ## Project layout
 
 ```
-pipeline/     core library -- detection, team ID, calibration cascade, rendering
+pipeline/     core library -- detection, team ID, calibration cascade, rendering;
+              pipeline/video/ is the video extension
 app/          the Gradio demo app
 eval/         evaluation and diagnostic tooling (not part of the live app)
 tests/        the test suite
@@ -69,9 +117,8 @@ everything else.
 
 ```bash
 # 1. project venv (detection, team ID, pitchcal, tests)
-uv venv .venv
-uv pip install --python .venv/bin/python -r requirements.txt
-# (or: pip install -e . / pip install -r requirements.txt, per pyproject.toml)
+uv sync --extra dev
+# (or: python -m venv .venv && .venv/bin/pip install -r requirements.txt pytest)
 
 # 2. PnLCalib venv (the calibration fallback + the demo app, since the app
 #    needs the fallback available). The demo app (app/app.py) imports
@@ -87,7 +134,7 @@ uv pip install --python vendor/PnLCalib/.venv/bin/python gradio
 ```
 
 Roboflow API key (only needed for frames *not* already in
-`data/detection_cache/`  the bundled sample frames and the demo app's
+`data/detection_cache/` -- the bundled sample frames and the demo app's
 three example frames all have cached detections, so a fresh clone can run
 the test suite and the demo without one):
 
@@ -110,12 +157,12 @@ takes over.
 ### Running the tests
 
 ```bash
-.venv/bin/python tests/test_pitchcal.py
-.venv/bin/python tests/test_frame_analysis_failures.py
-.venv/bin/python tests/test_orientation_roundtrip.py
+.venv/bin/python -m pytest -q
 ```
 
-All three run in the lightweight project venv. The PnLCalib fallback
+The suite runs in the lightweight project venv, and on every push via
+GitHub Actions (`.github/workflows/tests.yml`). Each test file can also be
+run directly as a script for verbose output. The PnLCalib fallback
 tests use a torch-free stub for the calibration half and exercise the
 real (numpy only) projection code, so the torch venv isn't required just
 to verify the pipeline's failure handling.

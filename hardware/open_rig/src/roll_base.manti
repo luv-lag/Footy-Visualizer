@@ -1,0 +1,47 @@
+// roll base: cradle pivots on an M6 bolt (axis along Y), an M5 screw from below sets the roll
+batch rollb document="cad/roll_base.mantiprt" {
+  @m1 part material pla_3d_print;
+  @m2 part process fdm;
+  @v1 var base_top:length = 24mm description="base plate top at Z = -base_top: 4mm under the cradle's mount block for +-4deg of roll";
+  @v2 var base_t:length = 10mm description="base plate thickness";
+  @v3 var pivot_x:length = 15mm description="roll pivot at X = -pivot_x, Z = -13: the cradle's weight sits on the +X side, so it always rests on the adjust screw";
+  @v4 var adjust_x:length = 60mm description="roll adjust screw at X = adjust_x (75mm lever: 1mm of screw = 0.76deg of roll)";
+  @v5 var insert_m5_d:length = 6.4mm description="hole for an M5 heat-set insert (assumed, check the maker's table)";
+  @v6 var insert_14_d:length = 8.0mm description="hole for a 1/4-20 UNC heat-set insert (assumed, check the maker's table)";
+
+  @d1 datum plane p_top kind=offset refs=[XY] offset=-base_top;
+  @s1 sketch create plate_s on=datum:p_top {
+    rectangle pl center=[17.5mm,0mm] width=115mm height=56mm;
+    constraint distance plx a=origin b=pl.br value=75mm along=x;
+    constraint horizontal ply a=origin b=pl.center;
+  }
+  @e1 extrude plate sketch=plate_s depth=base_t direction=normal_negative merge=false;
+  @s2 sketch create ears_s on=datum:p_top {
+    rectangle r1 center=[-15mm,22mm] width=24mm height=6mm;
+    rectangle r2 center=[-15mm,-22mm] width=24mm height=6mm;
+    constraint distance r1x a=origin b=r1.center value=pivot_x along=x;
+    constraint distance r1y a=origin b=r1.center value=22mm along=y;
+    constraint distance r2x a=origin b=r2.center value=pivot_x along=x;
+    constraint distance r2y a=origin b=r2.center value=22mm along=y;
+  }
+  @e2 extrude ears sketch=ears_s depth=19mm direction=normal_positive merge=true;
+  @s3 sketch create boss_s on=datum:p_top {
+    circle bs center=[60mm,0mm] diameter=12mm;
+    constraint distance bsx a=origin b=bs.center value=adjust_x along=x;
+    constraint horizontal bsy a=origin b=bs.center;
+  }
+  @e3 extrude boss sketch=boss_s depth=8mm direction=normal_positive merge=true;
+
+  // pivot bore through both ears, along Y
+  @d2 datum plane p_side kind=offset refs=[XZ] offset=-26mm;
+  @s4 sketch create pivot_s on=datum:p_side {
+    circle pv center=[-15mm,-13mm] diameter=6.4mm;
+    constraint distance pvx a=origin b=pv.center value=pivot_x along=x;
+    constraint distance pvz a=origin b=pv.center value=13mm along=y;
+  }
+  @e4 extrude pivot_bore sketch=pivot_s depth=52mm direction=normal_positive operation=cut;
+
+  @h1 hole adjust_insert on=plate.cap.bottom at=[adjust_x, 0mm] kind=blind diameter=insert_m5_d depth=base_t + 9mm;
+  @h2 hole tripod_14 on=plate.cap.bottom at=[0mm, 0mm] kind=blind diameter=insert_14_d depth=9mm;
+  @b1 inspect bounds;
+}

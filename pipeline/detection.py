@@ -17,6 +17,7 @@ import os
 import sys
 from dataclasses import dataclass
 
+import numpy as np
 from dotenv import load_dotenv
 from inference_sdk import InferenceHTTPClient
 
@@ -130,12 +131,31 @@ def infer(image_path: str) -> list[Detection]:
     """
     if not os.path.isfile(image_path):
         raise FileNotFoundError(f"Image not found: {image_path}")
+    return _infer_any(image_path)
 
+
+def infer_frame(frame: np.ndarray) -> list[Detection]:
+    """Like :func:`infer`, but for an in-memory BGR frame (e.g. from a video).
+
+    Args:
+        frame: BGR uint8 image array.
+
+    Returns:
+        A list of `Detection` objects, one per object detected in the frame.
+
+    Raises:
+        RuntimeError: Same conditions as :func:`infer`.
+    """
+    return _infer_any(frame)
+
+
+def _infer_any(image: str | np.ndarray) -> list[Detection]:
+    """Shared body of :func:`infer` / :func:`infer_frame`."""
     api_key = _get_api_key()
     client = InferenceHTTPClient(api_url=API_URL, api_key=api_key)
 
     try:
-        result = client.infer(image_path, model_id=MODEL_ID)
+        result = client.infer(image, model_id=MODEL_ID)
     except Exception as exc:  # noqa: BLE001 - re-raised with context below
         raise RuntimeError(
             f"Roboflow inference request failed for model {MODEL_ID!r}: {exc}"
@@ -157,8 +177,7 @@ def infer(image_path: str) -> list[Detection]:
             f"Malformed Roboflow response, 'predictions' is not a list: {predictions!r}"
         )
 
-    detections = [_parse_prediction(prediction) for prediction in predictions]
-    return detections
+    return [_parse_prediction(prediction) for prediction in predictions]
 
 
 def filter_players(detections: list[Detection]) -> list[Detection]:

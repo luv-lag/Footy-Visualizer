@@ -1,0 +1,12 @@
+batch leg document="cad/tripod_leg.mantiprt" {
+  @m1 part material aluminum_6061;
+  @v1 var leg_d:length = 20mm description="leg tube diameter";
+  @v2 var leg_l:length = 900mm description="leg length from its hinge at the hub (mock: fixed, not telescoping)";
+  @v3 var foot_d:length = 30mm description="rubber foot diameter";
+  @s1 sketch create leg_s on=XY { circle lg center=origin diameter=leg_d; }
+  @e1 extrude tube sketch=leg_s depth=leg_l direction=normal_negative merge=false;
+  @d1 datum plane p_foot kind=offset refs=[XY] offset=-(leg_l - 10mm);
+  @s2 sketch create foot_s on=datum:p_foot { circle ft center=origin diameter=foot_d; }
+  @e2 extrude foot sketch=foot_s depth=10mm direction=normal_negative merge=true;
+  @b1 inspect bounds;
+}

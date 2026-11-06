@@ -72,7 +72,6 @@ working through this project.
 - `docs/` -- the M1 milestone writeup (see above).
 - `outputs/` -- generated images/JSON from the historical approaches above.
   Not committed to git (regeneratable, and not source); present locally only.
-- `football-analysis_samples/` -- sample broadcast frames used by the
-  historical `football-analysis` subtree specifically (duplicates of
-  `data/samples/`, kept alongside the archived code that references them
-  by relative path).
+- The sample broadcast frames the historical `football-analysis` subtree
+  used now live only in `data/samples/` (the byte-identical copies that
+  used to sit in `football-analysis_samples/` were removed).
